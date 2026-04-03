@@ -1,0 +1,186 @@
+---
+title: "Troubleshooting"
+description: "Diagnose and fix common issues with Holy Unblocker LTS"
+---
+
+## Build errors
+
+**Symptom:** `npm start` or `npm run build` fails with compilation or file-not-found errors.
+
+**Causes and fixes:**
+
+1. Run the build step explicitly to see the full error output:
+
+   ```bash
+   npm run build
+   ```
+
+2. Confirm you are running Node.js 20.x:
+
+   ```bash
+   node --version
+   ```
+
+   If you are on a different version, switch using nvm:
+
+   ```bash
+   nvm install 20
+   nvm use 20
+   ```
+
+3. Ensure Rammerhead's dependencies are installed:
+
+   ```bash
+   cd lib/rammerhead && npm ci
+   ```
+
+---
+
+## Service not starting
+
+**Symptom:** `npm start` hangs, exits immediately, or reports that a port is already in use.
+
+**Fixes:**
+
+1. Force-kill any existing processes before retrying:
+
+   ```bash
+   npm run kill
+   npm start
+   ```
+
+2. Check if port 8080 is already bound to another process:
+
+   ```bash
+   lsof -i :8080
+   ```
+
+   If something else is using port 8080, either stop that process or change the port in `ecosystem.config.js`.
+
+---
+
+## Proxy not working / blank pages
+
+**Symptom:** The proxy interface loads but proxied pages appear blank, throw JavaScript errors, or fail silently.
+
+**Causes and fixes:**
+
+1. **Service workers require a secure context.** They only register on `https://` origins or `localhost`. If you are testing on a plain `http://` domain, service-worker-based proxies (Scramjet, Ultraviolet) will not work.
+
+2. Open the browser DevTools console and look for specific errors — missing service worker registrations or network failures point to different root causes.
+
+3. Run the proxy validator to test all endpoints:
+
+   ```bash
+   npm run proxy-validator
+   ```
+
+   This runs Puppeteer tests against Rammerhead and Ultraviolet to confirm they are responding correctly.
+
+---
+
+## 502 Bad Gateway
+
+**Symptom:** NGINX returns a 502 error when accessing the site.
+
+**Cause:** NGINX is not forwarding WebSocket upgrade headers to the Node.js server. Wisp requires these headers to function.
+
+**Fix:** Ensure your NGINX `location` block includes the following:
+
+```nginx
+location / {
+    proxy_pass http://localhost:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
+```
+
+Without `Upgrade` and `Connection` headers, Wisp WebSocket connections will fail and the proxy engines that depend on it (Scramjet, Ultraviolet) will not work.
+
+---
+
+## Wisp connection errors
+
+**Symptom:** Scramjet or Ultraviolet fails to connect; browser console shows WebSocket errors pointing to the `/wisp/` endpoint.
+
+**Cause:** Caddy or Apache is being used as the reverse proxy instead of NGINX.
+
+**Fix:** Use NGINX. The `wisp-js` server relies on loopback IP handling that has known compatibility issues with Caddy and Apache.
+
+<Warning>
+From `src/server.mjs`: "When hosting with a reverse proxy please ensure you are using NGINX only. Caddy and Apache have security risks due to wisp-js and loopbacks."
+</Warning>
+
+---
+
+## Rammerhead not working
+
+**Symptom:** Rammerhead session creation fails or the Rammerhead proxy page does not load.
+
+**Fixes:**
+
+1. Confirm `lib/rammerhead` has been built:
+
+   ```bash
+   cd lib/rammerhead && npm run build
+   ```
+
+2. Check the Rammerhead port configuration in `lib/rammerhead/holy-config.js`. The default port is `3000`. If that port is in use, update the value there.
+
+3. Ensure Rammerhead's own dependencies are installed:
+
+   ```bash
+   cd lib/rammerhead && npm ci
+   ```
+
+---
+
+## disguiseFiles — site not loading
+
+**Symptom:** With `disguiseFiles: true` in `config.json`, visiting the root URL shows a blank page or an icon instead of the actual site.
+
+**Cause:** This is expected behavior. When `disguiseFiles` is enabled, the root route (`/`) serves the loader. The real content is only rendered after the browser has a local key, which is issued by the `/login` page.
+
+**Fix:** Visit `/login` first, then navigate to the site normally.
+
+---
+
+## Stale JS/CSS after an update
+
+**Symptom:** After pulling updates, the site loads outdated styles or scripts. The browser may be serving cached service worker files.
+
+**Fixes:**
+
+1. Clear the Rammerhead cache and rebuild:
+
+   ```bash
+   npm run clean
+   npm run build
+   ```
+
+2. In your browser, open DevTools → Application → Service Workers and click **Unregister** for any registered workers, then do a hard reload (`Ctrl+Shift+R` or `Cmd+Shift+R`).
+
+Cache-busted filenames (e.g., `styles-1755147161.css`) are updated in `src/routes.mjs` during the build step, so a fresh build is the primary fix.
+
+---
+
+## Running proxy-validator
+
+**Symptom:** You want to verify that all routes and proxy engines are functioning correctly after deployment or a configuration change.
+
+**Command:**
+
+```bash
+npm test
+# equivalent to:
+npm run proxy-validator
+```
+
+This runs `proxyServiceValidator.js`, which:
+- Tests all registered HTTP endpoints for expected responses
+- Launches Puppeteer to perform end-to-end tests for Rammerhead and Ultraviolet
+- Reports failures with status codes and error details
+
+Run this after any significant change to `config.json`, `ecosystem.config.js`, or the proxy engine configuration.

@@ -1,80 +1,97 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get Holy Unblocker LTS running locally in minutes"
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+- **Node.js 20.x** — use [nvm](https://github.com/nvm-sh/nvm) to manage versions
+- **Git**
+- **NGINX** — required for production deployments (not needed for local development)
 
-### Step 1: Set up your local environment
+<CodeGroup>
+```bash nvm (recommended)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm install 20
+nvm use 20
+```
+```bash apt (Ubuntu/Debian)
+sudo apt install nodejs npm git
+```
+</CodeGroup>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Setup
 
-### Step 2: Deploy your changes
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/QuiteAFancyEmerald/Holy-Unblocker.git
+    cd Holy-Unblocker
+    ```
+    <Note>
+      For production self-hosting, switch to a stable production branch after cloning:
+      ```bash
+      git checkout v6.9.5_production
+      ```
+    </Note>
+  </Step>
+  <Step title="Install dependencies">
+    ```bash
+    npm run fresh-install
+    ```
+    This runs `npm cache verify && npm update && npm ci` and also installs Rammerhead's dependencies.
+  </Step>
+  <Step title="Start the server">
+    ```bash
+    npm start
+    ```
+    This stops any running processes, builds static assets, then starts the server. Holy Unblocker will be available at `http://localhost:8080`.
+  </Step>
+  <Step title="Open in your browser">
+    Navigate to `http://localhost:8080`. Type any URL into the omnibox and press Enter to browse through the proxy.
+  </Step>
+</Steps>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Warning>
+  When `disguiseFiles` is enabled in `config.json` (the default), the entry point is `/login` — not the root URL. Visit `http://localhost:8080/login` first to get a session key, then browsing will work normally.
+</Warning>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Basic usage
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Once the server is running, you can:
 
-### Step 3: Go live
+- **Enter any URL** in the omnibox on the browsing page to proxy it
+- **Switch proxy engines** (Scramjet, Ultraviolet, Rammerhead) from the navigation
+- **Open Settings** to toggle Tor routing, change transport, or enable/disable adblocking
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+## Subsequent runs
+
+After the first install, use these commands:
+
+| Command | Description |
+|---------|-------------|
+| `npm restart` | Stop and restart without rebuilding |
+| `npm start` | Full stop + rebuild + start |
+| `npm run kill` | Force kill all PM2 processes |
+| `npm run clean` | Clear Rammerhead cache |
+| `npm run build` | Rebuild static assets only |
+| `npm run proxy-validator` | Run endpoint + proxy tests |
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Configure your instance" icon="sliders" href="/configuration/server">
+    Customize config.json for your environment
+  </Card>
+  <Card title="Deploy to a server" icon="cloud" href="/deployment">
+    One-click and VPS deployment options
+  </Card>
+  <Card title="Set up Tor routing" icon="eye-slash" href="/configuration/tor-routing">
+    Browse .onion sites anonymously
+  </Card>
+  <Card title="Self-host on a VPS" icon="server" href="/self-hosting/vps-setup">
+    Full VPS setup guide with NGINX
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

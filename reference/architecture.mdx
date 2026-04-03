@@ -1,0 +1,115 @@
+---
+title: "Architecture"
+description: "How Holy Unblocker LTS works under the hood"
+---
+
+## Overview
+
+Holy Unblocker LTS is built on Node.js 20 and [Fastify 5](https://github.com/fastify/fastify). A single HTTP server process handles all incoming requests and dispatches them to one of three subsystems: Fastify (static files and page routing), the Wisp WebSocket server, or the in-process Rammerhead server.
+
+## Proxy engines
+
+Three proxy engines are bundled:
+
+| Engine | Protocol | Transport |
+|--------|----------|-----------|
+| [Scramjet](https://github.com/MercuryWorkshop/scramjet) | Service worker | Wisp via `@mercuryworkshop/wisp-js` |
+| [Ultraviolet](https://github.com/titaniumnetwork-dev/Ultraviolet) | Service worker | Wisp via `@mercuryworkshop/wisp-js` |
+| [Rammerhead](https://github.com/binary-person/rammerhead) | In-process server | Direct HTTP/WebSocket |
+
+**Wisp** (`@mercuryworkshop/wisp-js`) is a WebSocket-based TCP tunneling protocol. Scramjet and Ultraviolet use it to forward proxied traffic to target servers. The Wisp endpoint is `/wisp/` (WebSocket upgrade only).
+
+**Rammerhead** runs as a separate in-process HTTP server instantiated via `createRammerhead()`. It handles its own session lifecycle through dedicated endpoints and matches requests using a 32-character hex session ID regex.
+
+## Server factory pattern
+
+Fastify is initialized with a custom `serverFactory` that creates a plain Node.js `http.Server` and intercepts every request and WebSocket upgrade before Fastify sees it (`src/server.mjs:86`):
+
+```
+http.Server
+  ├── request → shouldRouteRh?  → Rammerhead handler
+  │                else         → Fastify handler
+  └── upgrade → shouldRouteRh?  → Rammerhead upgrade
+                ends with /wisp/ → Wisp routeRequest
+```
+
+This means Rammerhead and Wisp are effectively invisible to Fastify's router.
+
+## Request flow
+
+```
+Browser
+  └─► NGINX (TLS termination, reverse proxy)
+        └─► Node.js http.Server (port 8080)
+              ├─► Rammerhead  ← session URLs + /newsession etc.
+              ├─► Wisp        ← WebSocket upgrade to /wisp/
+              └─► Fastify
+                    ├─► Static files  ← /assets/, /uv/, /scram/, ...
+                    └─► Page routes   ← /browsing, /ultraviolet, ...
+                          └─► Target website (via proxy engine)
+```
+
+<Warning>
+Only NGINX is supported as a reverse proxy. Caddy and Apache have known issues with `wisp-js` loopbacks. Always configure NGINX with WebSocket upgrade headers.
+</Warning>
+
+## Static file serving
+
+After a build, all frontend assets are placed in `views/dist/`. Fastify registers multiple static file roots:
+
+| Fastify prefix | Disk path |
+|----------------|-----------|
+| `/` | `views/dist/pages` |
+| `/assets/` | `views/dist/assets` |
+| `/archive/` | `views/dist/archive` |
+| `/uv/` | `views/dist/uv` |
+| `/scram/` | `views/dist/scram` |
+| `/epoxy/` | `views/dist/epoxy` |
+| `/libcurl/` | `views/dist/libcurl` |
+| `/baremux/` | `views/dist/baremux` |
+| `/chii/` | `views/dist/chii` |
+
+When `usingSEO` is disabled in `config.json`, all prefixes are swapped to their obfuscated alt-path equivalents defined in `src/routes.mjs`.
+
+## Build step
+
+`node run-command.mjs build` processes the `views/` source tree into `views/dist/`:
+
+- Applies source rewrites from `src/source-rewrites.mjs` (identifier randomization, keyword substitution)
+- Optionally minifies scripts via `esbuild` when `minifyScripts` is enabled in `config.json`
+- Builds Rammerhead: `cd lib/rammerhead && npm run build`
+
+Cache-busted filenames (e.g., `styles-1755147161.css`) are managed in `src/routes.mjs` via the `cacheBustList` export.
+
+## Process management
+
+In production (`production: true` in `config.json`), PM2 manages three processes defined in `ecosystem.config.js`:
+
+| Process | Purpose | Schedule |
+|---------|---------|----------|
+| `HolyUBLTS` | Main HTTP server (`backend.js`) | Always running, restarts every 10 min via cron |
+| `HolyUBLTS-src-refresh` | Rebuilds static assets | Every 10 minutes |
+| `HolyUBLTS-cache-clean` | Clears Rammerhead session cache | Weekly |
+
+For development, the server can be started directly with `node backend.js`.
+
+## Security
+
+- `@fastify/helmet` is applied to all Fastify responses. Content Security Policy is **disabled** — it is incompatible with service-worker-based proxies.
+- `x-powered-by` header is suppressed.
+- Wisp enforces a port whitelist: `80`, `443`, `9050` (Tor), `7000`, `7001`.
+- UDP streams are disabled on Wisp.
+- Loopback IPs are permitted on Wisp (required for Rammerhead and local testing).
+
+## Key source files
+
+| File | Role |
+|------|------|
+| `backend.js` | Entry point; imports and starts the server |
+| `src/server.mjs` | Fastify setup, serverFactory, Wisp/Rammerhead routing |
+| `src/routes.mjs` | Page map, alt-paths, external redirects, URL helpers |
+| `src/templates.mjs` | File reading helpers and preloaded 404 response |
+| `src/source-rewrites.mjs` | Build-time source transformations |
+| `ecosystem.config.js` | PM2 process definitions and port configuration |
+| `config.json` | Runtime feature flags |
+| `views/` | All frontend HTML, CSS, and JS source files |

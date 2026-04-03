@@ -1,0 +1,73 @@
+---
+title: "Adblocking"
+description: "How Holy Unblocker LTS blocks ads across all proxied websites"
+---
+
+Holy Unblocker blocks ads and trackers by registering a modified service worker that intercepts outgoing requests and drops known ad and tracker domains before they reach the network.
+
+## How it works
+
+At startup, `register-sw.js` reads the `HideAds` setting from `localStorage` and selects the appropriate service worker variant — standard or blacklist:
+
+```js
+const usedSW = swRoutes.uv[readStorage('HideAds') !== false ? 1 : 0];
+```
+
+`swRoutes.uv[0]` is the standard service worker; `swRoutes.uv[1]` is the blacklist variant. Because `HideAds !== false` is `true` when the key is unset, adblocking is **enabled by default**.
+
+The same logic applies to Scramjet:
+
+```js
+navigator.serviceWorker.register(
+  swRoutes.sj[readStorage('HideAds') !== false ? 1 : 0]
+);
+```
+
+## Service worker files
+
+<CardGroup cols={2}>
+  <Card title="Ultraviolet — standard" icon="circle">
+    `uv/sw.js` — no adblocking.
+  </Card>
+  <Card title="Ultraviolet — blacklist" icon="ban">
+    `uv/sw-blacklist.js` — blocks ad and tracker domains.
+  </Card>
+  <Card title="Scramjet — standard" icon="circle">
+    `scram/scramjet.sw.js` — no adblocking.
+  </Card>
+  <Card title="Scramjet — blacklist" icon="ban">
+    `scram/scramjet.sw-blacklist.js` — blocks ad and tracker domains.
+  </Card>
+</CardGroup>
+
+## Enabling and disabling
+
+Toggle adblocking from the [Settings menu](/features/settings-menu). The state is stored in `localStorage` under the key `HideAds`.
+
+| `HideAds` value | Service worker used |
+|-----------------|---------------------|
+| `true` or unset (default) | Blacklist variant (adblocking on) |
+| `false` | Standard variant (adblocking off) |
+
+When you toggle the setting, the outdated service worker is unregistered and the correct one is registered in its place:
+
+```js
+// Unregister outdated service workers
+for (const registration of registrations)
+  if (
+    registration.active &&
+    new URL(registration.active.scriptURL).pathname !==
+      new URL(usedSW, location.origin).pathname
+  )
+    await registration.unregister();
+
+await navigator.serviceWorker.register(usedSW);
+```
+
+<Warning>
+  Rammerhead does not use service workers and therefore does not support adblocking. Switching to Rammerhead disables adblocking regardless of the `HideAds` setting.
+</Warning>
+
+<Tip>
+  If a proxied site breaks with adblocking on, try disabling `HideAds` in the Settings menu and reloading the page.
+</Tip>

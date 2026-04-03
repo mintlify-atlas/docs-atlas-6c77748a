@@ -1,0 +1,113 @@
+---
+title: "Docker deployment"
+description: "Run Holy Unblocker LTS with Docker or Docker Compose"
+---
+
+The official Docker image bundles Holy Unblocker LTS with Tor pre-installed. You can use the pre-built image from Docker Hub or build from source.
+
+## Pre-built image
+
+Pull the latest release image:
+
+```bash
+docker pull quiteafancyemerald/holy-unblocker:6.9.5
+```
+
+Run it directly:
+
+```bash
+docker run -d \
+  -p 8080:8080 \
+  --restart unless-stopped \
+  quiteafancyemerald/holy-unblocker:6.9.5
+```
+
+The app will be available at `http://localhost:8080`.
+
+## Docker Compose
+
+<Steps>
+  <Step title="Create or use the included docker-compose.yml">
+    The repository ships with a ready-to-use `docker-compose.yml`:
+
+    ```yaml
+    version: "3.9"
+
+    services:
+      holy-unblocker:
+        image: quiteafancyemerald/holy-unblocker:6.9.5
+        build: .
+        container_name: holy-unblocker
+        ports:
+          - "8080:8080"
+        restart: unless-stopped
+        environment:
+          NODE_ENV: production
+    ```
+
+    `NODE_ENV: production` activates production mode, equivalent to setting `production: true` in `config.json`.
+  </Step>
+
+  <Step title="Start the container">
+    Run with the pre-built image:
+
+    ```bash
+    docker compose up -d
+    ```
+
+    Or build the image from source first:
+
+    ```bash
+    docker compose up -d --build
+    ```
+  </Step>
+
+  <Step title="Verify the container is running">
+    ```bash
+    docker ps
+    docker logs holy-unblocker
+    ```
+  </Step>
+</Steps>
+
+## Dockerfile reference
+
+The image is built on `node:20-alpine`. Tor is added via `apk` so SOCKS5 and Onion routing work without any additional setup:
+
+```dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+LABEL org.opencontainers.image.title="Holy Unblocker LTS" \
+      org.opencontainers.image.version="6.9.5" \
+      org.opencontainers.image.source="https://github.com/QuiteAFancyEmerald/Holy-Unblocker/"
+
+RUN apk add --no-cache tor bash
+
+COPY . .
+
+RUN npm run fresh-install
+RUN npm run build
+
+EXPOSE 8080 9050 9051
+
+COPY serve.sh /serve.sh
+RUN chmod +x /serve.sh
+
+CMD ["/serve.sh"]
+```
+
+## Exposed ports
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| `8080` | HTTP | Holy Unblocker web interface |
+| `9050` | SOCKS5 | Tor SOCKS5 proxy |
+| `9051` | TCP | Tor control port |
+
+Ports `9050` and `9051` only need to be mapped to the host if you want to access Tor from outside the container. For standard deployments, only `8080` is required.
+
+<Note>
+  To proxy with NGINX in front of Docker, point your NGINX `proxy_pass` at `http://localhost:8080`. See the [NGINX configuration](/self-hosting/nginx) guide for the full config.
+</Note>

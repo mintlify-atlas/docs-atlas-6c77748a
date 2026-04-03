@@ -1,0 +1,88 @@
+---
+title: "Settings menu"
+description: "Configure proxy engine, transport, Tor routing, and stealth options from the Holy Unblocker settings menu"
+---
+
+The settings menu lets you configure the active proxy engine, transport layer, Tor routing, adblocking, and tab stealth. All settings are persisted in `localStorage` under the `{{hu-lts}}-storage` key as a JSON object.
+
+<CardGroup cols={2}>
+  <Card title="Proxy engine" icon="server">
+    Switch between Scramjet, Ultraviolet, and Rammerhead without reloading the page.
+  </Card>
+  <Card title="Transport" icon="arrow-right-arrow-left">
+    Choose between `libcurl` (default) and `epoxy` for Bare-Mux-based engines.
+  </Card>
+  <Card title="Tor / SOCKS5" icon="shield-halved">
+    Route proxied traffic through Tor or a regional SOCKS5 server.
+  </Card>
+  <Card title="Tab stealth" icon="eye-slash">
+    Set a custom tab title and favicon to disguise browsing history.
+  </Card>
+</CardGroup>
+
+## Proxy engine selection
+
+Switch between **Scramjet**, **Ultraviolet**, and **Rammerhead** from the settings panel. The selected engine is applied on the next navigation. See [Proxy engines](/features/proxy-engines) for a full comparison.
+
+## Transport (Bare-Mux)
+
+Controls which WebAssembly transport is used by Scramjet and Ultraviolet. The selected value is stored in `localStorage` under the key `Transport`.
+
+| Value | Transport | Description |
+|-------|-----------|-------------|
+| `libcurl` | libcurl.js | Default. libcurl compiled to WebAssembly. |
+| `epoxy` | EpoxyTransport | Alternative WebAssembly-based transport. |
+
+The transport is resolved at service worker registration time:
+
+```js
+const transportMode =
+  transports[readStorage('Transport')] || transports.default;
+```
+
+<Note>
+  Transport selection has no effect on Rammerhead, which uses its own session-based system and does not depend on Bare-Mux.
+</Note>
+
+## Tor / SOCKS5 routing
+
+When enabled, proxied traffic is routed through a SOCKS5 server before reaching the destination. The setting is stored as the `UseSocks5` key in `localStorage`.
+
+| Value | Proxy URL | Description |
+|-------|-----------|-------------|
+| `tor` | `socks5h://localhost:9050` | Route through Tor |
+| `eu` | `socks5h://localhost:7000` | Route through EU SOCKS5 server |
+| `jp` | `socks5h://localhost:7001` | Route through JP SOCKS5 server |
+
+The proxy is passed to the active transport at registration:
+
+```js
+if ('string' === typeof readStorage('UseSocks5'))
+  transportOptions.proxy = proxyUrl[readStorage('UseSocks5')];
+```
+
+<Warning>
+  Tor routing requires a running Tor daemon on port `9050`. It is not bundled with Holy Unblocker. See the [Tor Project installation guide](https://tb-manual.torproject.org/installation) for setup instructions.
+</Warning>
+
+## Adblocking
+
+Toggles between the standard and blacklist service worker variants. Stored as `HideAds` in `localStorage`. Enabled by default.
+
+```js
+const usedSW = swRoutes.uv[readStorage('HideAds') !== false ? 1 : 0];
+```
+
+When `HideAds` is `true` (or not set), the blacklist service worker is registered. When set to `false`, the standard service worker is used instead. See [Adblocking](/features/adblocking) for full details.
+
+<Note>
+  Adblocking is not supported on Rammerhead, which does not use service workers.
+</Note>
+
+## Tab stealth
+
+Set a custom tab title and favicon to disguise your browsing activity in browser history and the taskbar. The values are stored in `localStorage` and applied immediately on change.
+
+<Tip>
+  Tab stealth affects only the Holy Unblocker tab itself, not the content being proxied inside it. It does not alter browser history entries.
+</Tip>

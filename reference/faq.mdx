@@ -1,0 +1,118 @@
+---
+title: "FAQ"
+description: "Frequently asked questions about Holy Unblocker LTS"
+---
+
+<AccordionGroup>
+
+  <Accordion title="Where are the games?">
+    Due to piracy concerns and repository size limits, game assets have been moved to a separate archive repository. Download the latest release from [HU-Archive](https://github.com/QuiteAFancyEmerald/HU-Archive) and extract the contents into `views/archive/` inside your Holy Unblocker installation.
+
+    ```bash
+    # After downloading and extracting HU-Archive:
+    mv HU-Archive/* Holy-Unblocker/views/archive/
+    ```
+
+    The archive contains:
+    - `views/archive/g/` — HTML5 and web games
+    - `views/archive/gfiles/flash/` — Ruffle (Flash emulator) and Flash games
+    - `views/archive/gfiles/rarch/` — WebRetro (RetroArch WASM port); ROMs are not included
+  </Accordion>
+
+  <Accordion title="Why is a site not working or showing CAPTCHA errors?">
+    CAPTCHA support varies across proxy engines. Scramjet currently has the best CAPTCHA handling. Ultraviolet and Rammerhead have more limited support.
+
+    If a site is showing CAPTCHA errors or failing to load:
+    1. Switch to **Scramjet** from the Settings menu.
+    2. If the issue persists with all engines, the site may actively block proxied traffic. There is no workaround for this.
+
+    Some sites implement bot detection that cannot be bypassed by any client-side proxy.
+  </Accordion>
+
+  <Accordion title="I'm getting 502 errors. What do I do?">
+    A 502 error typically means the proxy engine or target server did not respond correctly. Try the following:
+
+    1. Switch to a different proxy engine (Scramjet, Ultraviolet, or Rammerhead).
+    2. Clear your browser cache and reload.
+    3. Wait a moment and retry — transient network issues often resolve on their own.
+
+    If the error persists across all engines, check your server logs. A common cause is an NGINX misconfiguration missing WebSocket upgrade headers — see the [troubleshooting guide](/reference/troubleshooting) for details.
+  </Accordion>
+
+  <Accordion title="Why is the master branch unstable?">
+    The `master` branch contains work-in-progress changes that may not be ready for production use. For self-hosting, always use a production branch such as `v6.9.5_production`.
+
+    ```bash
+    git checkout v6.9.5_production
+    ```
+
+    Production branches have source randomization, DOM masquerading, and filter-evasion features configured automatically. If you want to contribute, submit pull requests to `master`.
+  </Accordion>
+
+  <Accordion title="What happened to Replit/Heroku deployment?">
+    Replit is no longer free for always-on hosting. Heroku has a policy against web proxy services and will suspend accounts that run them.
+
+    Current recommended alternatives:
+    - **[Koyeb](https://app.koyeb.com/)** — free tier, supports Docker and Git deployments
+    - **[GitHub Codespaces](https://github.com/codespaces)** — useful for development and testing, not for persistent public hosting
+    - **VPS providers** (Crunchbits, Oracle Cloud, etc.) — recommended for production
+
+    The `npm run deployment` script is designed for use with platforms that run `npm start` or a Dockerfile entrypoint.
+  </Accordion>
+
+  <Accordion title="Why are official domains numbered? Is the project still maintained?">
+    Yes, Holy Unblocker LTS is actively maintained. Domains are numbered because official instances are restocked frequently — numbered naming makes it easier to distribute new links as older ones get blocked.
+
+    Join the Titanium Network Discord at [discord.gg/unblock](https://discord.gg/unblock) to get current working instance links.
+  </Accordion>
+
+  <Accordion title="Does Holy Unblocker work on Chromebooks?">
+    Yes. Holy Unblocker runs entirely in the browser as a web application — there is nothing to install on the device. It works on any device with a modern browser, including Chromebooks with managed policies, as long as the hosting domain is not blocked.
+  </Accordion>
+
+  <Accordion title="Can I use Tor on any browser?">
+    Yes. Holy Unblocker routes Tor traffic through a SOCKS5 proxy via Wisp, which means `.onion` sites are accessible in any browser — including Chromium-based browsers that do not natively support Tor.
+
+    To enable Tor routing:
+    1. Install and run Tor on the server (default port `9050`).
+    2. Enable the **Tor** option in the Holy Unblocker Settings menu.
+
+    The Wisp server whitelists port `9050` by default. Custom SOCKS5 proxy URLs can be configured in `views/assets/js/register-sw.js`:
+
+    ```js
+    proxyUrl = {
+      tor: 'socks5h://localhost:9050',
+      eu: 'socks5h://localhost:7000',
+      jp: 'socks5h://localhost:7001',
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="How do I change the default port from 8080?">
+    Edit `ecosystem.config.js` and update the `PORT` value:
+
+    ```js
+    env: {
+      PORT: 8080  // development port
+    },
+    env_production: {
+      PORT: 8080  // production port
+    }
+    ```
+
+    The default Rammerhead port is `3000` and is configured separately in `lib/rammerhead/holy-config.js`.
+
+    After changing the port, restart the server:
+
+    ```bash
+    npm restart
+    ```
+  </Accordion>
+
+  <Accordion title="Is this legal?">
+    Holy Unblocker is open source software licensed under the GNU Affero General Public License. It is intended for privacy protection and for accessing legitimately blocked content.
+
+    Users are responsible for complying with the laws of their jurisdiction and the acceptable use policies of their network. The project maintainers do not condone bypassing content restrictions that are illegal to circumvent in your location.
+  </Accordion>
+
+</AccordionGroup>

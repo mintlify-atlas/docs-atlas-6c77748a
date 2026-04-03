@@ -1,0 +1,72 @@
+---
+title: "Domain and DNS setup"
+description: "Set up a custom domain and Cloudflare DNS for your Holy Unblocker instance"
+---
+
+A custom domain routed through Cloudflare gives your Holy Unblocker instance DDoS protection, free SSL, and easy DNS management.
+
+## Register a domain
+
+<CardGroup cols={2}>
+  <Card title="Porkbun" icon="tag" href="https://porkbun.com">
+    `.org` domains from ~$5 for the first year. Generally the cheapest option for standard TLDs.
+  </Card>
+  <Card title="Namecheap" icon="globe" href="https://namecheap.com">
+    Competitive pricing with a straightforward interface.
+  </Card>
+</CardGroup>
+
+## Configure Cloudflare DNS
+
+<Steps>
+  <Step title="Create a Cloudflare account and add your site">
+    Go to [cloudflare.com](https://cloudflare.com), create an account, and click **Add a site**. Enter your domain name and select the free plan.
+  </Step>
+
+  <Step title="Update your nameservers at your registrar">
+    Cloudflare will show you two nameservers (e.g., `ada.ns.cloudflare.com` and `cole.ns.cloudflare.com`). Log in to your domain registrar (Porkbun, Namecheap, etc.) and replace the existing nameservers with Cloudflare's.
+
+    Propagation can take up to 24 hours, though it usually completes within an hour.
+  </Step>
+
+  <Step title="Add DNS A records">
+    In the Cloudflare dashboard, go to **DNS > Records** and add the following records pointing to your VPS IP address:
+
+    | Type | Name | Content | Proxy status |
+    |------|------|---------|--------------|
+    | A | `@` | `YOUR_VPS_IP` | Proxied |
+    | A | `www` | `YOUR_VPS_IP` | Proxied |
+    | A | `a` | `YOUR_VPS_IP` | Proxied |
+
+    - `@` covers the apex domain (`example.com`)
+    - `www` covers `www.example.com`
+    - `a` covers `a.example.com`, which can serve alternate Holy Unblocker instances or other services
+
+    Add additional subdomain records (`b`, `c`, etc.) as needed for more instances.
+  </Step>
+
+  <Step title="Configure SSL/TLS mode">
+    In the Cloudflare dashboard, go to **SSL/TLS > Overview** and choose a mode:
+
+    | Mode | When to use |
+    |------|-------------|
+    | **Flexible** | You have not set up Let's Encrypt or a certificate on your server. Cloudflare handles SSL to the browser; traffic from Cloudflare to your server is unencrypted. |
+    | **Full** | You have a self-signed or Let's Encrypt certificate installed on your server via NGINX. |
+
+    <Note>
+      If you followed the [NGINX configuration](/self-hosting/nginx) guide and ran Certbot, use **Full** mode. For a basic setup without Certbot, use **Flexible**.
+    </Note>
+  </Step>
+
+  <Step title="Force HTTPS">
+    In the Cloudflare dashboard, go to **SSL/TLS > Edge Certificates** and enable **Always Use HTTPS**. This redirects all HTTP traffic to HTTPS automatically.
+  </Step>
+</Steps>
+
+<Note>
+  After updating your NGINX config to match your domain, reload NGINX on your VPS:
+
+  ```bash
+  sudo systemctl reload nginx
+  ```
+</Note>

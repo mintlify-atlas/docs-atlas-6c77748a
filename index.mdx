@@ -1,97 +1,65 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Holy Unblocker LTS"
+description: "A privacy-focused web proxy service that bypasses censorship and content filters in your browser — no downloads, no extensions, no setup."
 ---
 
-## Setting up
+Holy Unblocker LTS lets you access any website blocked by your school, workplace, government, or ISP — directly in your browser. Three built-in proxy engines, Tor routing support, and a games library are all included out of the box.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Get Started" icon="rocket" href="/quickstart">
+    Run Holy Unblocker locally in under 5 minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Deploy" icon="cloud-arrow-up" href="/deployment">
+    One-click deployment to Koyeb, Docker, Render, and more
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Proxy Engines" icon="shield-halved" href="/features/proxy-engines">
+    Scramjet, Ultraviolet, and Rammerhead explained
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Configuration" icon="sliders" href="/configuration/server">
+    Customize your instance with config.json
   </Card>
-</Columns>
+  <Card title="Tor Routing" icon="eye-slash" href="/configuration/tor-routing">
+    Browse .onion sites in any browser
+  </Card>
+  <Card title="Self-Hosting" icon="server" href="/self-hosting/vps-setup">
+    Run on your own VPS for full privacy control
+  </Card>
+</CardGroup>
 
-## Create beautiful pages
+## Get up and running
 
-Everything you need to create world-class documentation.
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/QuiteAFancyEmerald/Holy-Unblocker.git
+    cd Holy-Unblocker
+    ```
+  </Step>
+  <Step title="Install dependencies and build">
+    ```bash
+    npm run fresh-install
+    ```
+  </Step>
+  <Step title="Start the server">
+    ```bash
+    npm start
+    ```
+    The proxy service starts at `http://localhost:8080`.
+  </Step>
+  <Step title="Access the site">
+    Open your browser and navigate to `http://localhost:8080`. Use the omnibox to enter any URL and start browsing through the proxy.
+  </Step>
+</Steps>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Note>
+  For production self-hosting, switch to a production branch (e.g., `v6.9.5_production`) before deploying. The `master` branch contains work-in-progress changes.
+</Note>
 
-## Need inspiration?
+## Why Holy Unblocker?
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+- **No install required** — runs entirely in the browser via service workers
+- **Multiple proxy engines** — pick the right engine for your network environment
+- **Tor & Onion support** — browse `.onion` sites in any browser, including Chromium
+- **Built-in adblocking** — blocks ads across all proxied websites
+- **Stealth features** — DOM masquerading and source randomization evade advanced filters
+- **30M+ users** — battle-tested since 2020

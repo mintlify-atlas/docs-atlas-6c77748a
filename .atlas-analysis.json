@@ -1,0 +1,84 @@
+{
+  "projectType": "saas",
+  "projectName": "Holy Unblocker LTS",
+  "projectDescription": "A self-hostable web proxy service that bypasses network filters and censorship in-browser, supporting Tor/Onion routing, multiple proxy engines, and an integrated games library.",
+  "theme": "almond",
+  "primaryColor": "#f45e64",
+  "lightColor": "#5f5f6f",
+  "darkColor": "#ebdee1",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "deployment"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/server",
+              "configuration/proxy",
+              "configuration/tor-routing",
+              "configuration/stealth"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/proxy-engines",
+              "features/games-library",
+              "features/settings-menu",
+              "features/adblocking"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "self-hosting/vps-setup",
+              "self-hosting/docker",
+              "self-hosting/nginx",
+              "self-hosting/domain-dns"
+            ]
+          },
+          {
+            "group": "Reference & FAQ",
+            "pages": [
+              "reference/architecture",
+              "reference/routes",
+              "reference/npm-scripts",
+              "reference/faq",
+              "reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multiple built-in proxy engines: Scramjet, Ultraviolet, and Rammerhead",
+    "Tor/Onion and SOCKS5 routing support in any browser",
+    "DOM masquerading and source randomization for filter evasion",
+    "Integrated adblocking via modified service worker",
+    "Tab title and icon stealth customization",
+    "Built-in HTML5 games library, Flash emulation via Ruffle, and RetroArch emulators",
+    "Production-ready with PM2, Docker, and NGINX support",
+    "Wisp protocol with Bare-Mux transport swapping (EpoxyTransport, libcurl-transport)"
+  ],
+  "publicApiSurface": [
+    "GET /:path — Serves HTML pages defined in src/routes.mjs",
+    "GET /github/:redirect — Redirects to external GitHub project links",
+    "WS /wisp/ — Wisp WebSocket proxy endpoint",
+    "Rammerhead session endpoints: /newsession, /editsession, /api/shuffleDict, /mainport, etc.",
+    "config.json: minifyScripts, randomizeIdentifiers, production, disguiseFiles, usingSEO",
+    "ecosystem.config.js: PORT, NODE_ENV, PM2 worker/restart configuration",
+    "register-sw.js: wispUrl, proxyUrl, transports, defaultMode, ScramjetController",
+    "common.js: goProx, prSet, getDomain, goFrame, sx, urlHandler, asyncUrlHandler",
+    "npm run fresh-install / start / restart / stop / kill / build / clean / proxy-validator"
+  ]
+}

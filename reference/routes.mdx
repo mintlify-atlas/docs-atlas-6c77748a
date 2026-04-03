@@ -1,0 +1,125 @@
+---
+title: "Routes reference"
+description: "All URL routes served by Holy Unblocker LTS"
+---
+
+Routes are defined in `src/routes.mjs`. The active path for each route depends on the `usingSEO` flag in `config.json`:
+
+- **`usingSEO: true`** — SEO-friendly names are used (e.g., `/ultraviolet`).
+- **`usingSEO: false`** — Alt-paths replace SEO names to obscure keywords that network filters may detect (e.g., `/networking`).
+
+## Main pages
+
+| Route (SEO) | Alt path | Serves |
+|-------------|----------|--------|
+| `/` | `/` | `index.html` (or `pages/misc/deobf/entry-point.html` when `disguiseFiles` is enabled) |
+| `/browsing` | `/browsing` | `pages/surf.html` |
+| `/documentation` | `/documentation` | `docs.html` |
+| `/questions` | `/questions` | `faq.html` |
+| `/credits` | `/credits` | `pages/nav/credits.html` |
+| `/terms` | `/terms` | `pages/nav/terms.html` |
+| `/s` | `/s` | `pages/frame.html` |
+| `/login` | `/login` | `pages/misc/deobf/entry-point.html` |
+
+<Note>
+When `disguiseFiles` is enabled, users must visit `/login` first. The page loader provides a local key required to render any other content. Requests to other routes without this key receive the loader HTML instead of the actual page.
+</Note>
+
+## Games pages
+
+| Route (SEO) | Alt path | Serves |
+|-------------|----------|--------|
+| `/games` | `/books` | `pages/nav/directory.html` |
+| `/web-games` | `/dictionary` | `pages/nav/games.html` |
+| `/emulators` | `/catalogue` | `pages/nav/emulators.html` |
+| `/flash-games` | `/textbook` | `pages/nav/flash.html` |
+| `/retro-games` | `/math` | `pages/nav/emulibrary.html` |
+| `/partners` | `/interface` | `pages/nav/partners.html` |
+
+## Proxy pages
+
+| Route (SEO) | Alt path | Serves |
+|-------------|----------|--------|
+| `/ultraviolet` | `/networking` | `pages/proxnav/ultraviolet.html` |
+| `/scramjet` | `/working` | `pages/proxnav/scramjet.html` |
+| `/rammerhead` | `/physics` | `pages/proxnav/rammerhead.html` |
+| `/youtube` | `/wiki` | `pages/proxnav/preset/youtube.html` |
+| `/apps` | `/software` | `pages/proxnav/preset/applications.html` |
+
+Error pages for proxy failures are served at:
+
+| Route (SEO) | Alt path | Serves |
+|-------------|----------|--------|
+| `/uverror` | `/network-error` | `pages/proxnav/ultraviolet-error.html` |
+| `/sjerror` | `/worker-error` | `pages/proxnav/scramjet-error.html` |
+
+## Archive / misc pages
+
+| Route (SEO) | Alt path | Serves |
+|-------------|----------|--------|
+| `/flash` | `/whiteboard` | `archive/gfiles/flash/index.html` |
+| `/webretro` | `/notebook` | `archive/gfiles/rarch/index.html` |
+| `/vibe-os` | `/pencil` | `archive/vibeOS/index.html` |
+
+<Note>
+Archive content (games, ROMs, Ruffle) is not bundled in this repository due to size and piracy concerns. Download the archive from [HU-Archive](https://github.com/QuiteAFancyEmerald/HU-Archive) and extract it into `views/archive/`.
+</Note>
+
+## External redirects
+
+### `/github/:redirect`
+
+Redirects to a GitHub repository based on the `:redirect` parameter. Defined in `src/server.mjs:295` and `src/routes.mjs:86`.
+
+| `:redirect` value | Destination |
+|-------------------|-------------|
+| *(default)* | `https://github.com/QuiteAFancyEmerald/Holy-Unblocker` |
+| `scramjet` | `https://github.com/MercuryWorkshop/scramjet` |
+| `ultraviolet` | `https://github.com/titaniumnetwork-dev/Ultraviolet` |
+| `wisp` | `https://github.com/MercuryWorkshop/wisp-protocol` |
+| `bare-mux` | `https://github.com/MercuryWorkshop/bare-mux` |
+| `epoxy` | `https://github.com/MercuryWorkshop/epoxy-tls` |
+| `libcurl-js` | `https://github.com/ading2210/libcurl.js` |
+| `fastify` | `https://github.com/fastify/fastify` |
+| `bare-module` | `https://github.com/motortruck1221/bare-as-module3` |
+| `font-awesome` | `https://github.com/FortAwesome/Font-Awesome` |
+| `nord-theme` | `https://github.com/nordtheme` |
+| `aos` | `https://github.com/michalsnik/aos` |
+
+## Rammerhead session endpoints
+
+These paths are intercepted by the `serverFactory` before reaching Fastify and are forwarded directly to the in-process Rammerhead server (`src/server.mjs:44`):
+
+| Endpoint | Description |
+|----------|-------------|
+| `/newsession` | Create a new Rammerhead session |
+| `/editsession` | Edit session properties |
+| `/deletesession` | Delete a session |
+| `/sessionexists` | Check whether a session ID exists |
+| `/needpassword` | Check if a session requires a password |
+| `/syncLocalStorage` | Sync localStorage state across tabs |
+| `/api/shuffleDict` | Retrieve the shuffle dictionary for URL encoding |
+| `/mainport` | Return the Rammerhead service port |
+| `/messaging` | WebSocket messaging channel |
+
+Any path matching `^/[a-z0-9]{32}` is also routed to Rammerhead as an active session.
+
+## Wisp endpoint
+
+| Endpoint | Protocol | Description |
+|----------|----------|-------------|
+| `/wisp/` | WebSocket | TCP tunneling for Scramjet and Ultraviolet. HTTP requests to this path are ignored — only WebSocket upgrades are handled. |
+
+## Static asset prefixes
+
+These prefixes are served as static directories and are **not** part of the page routing system:
+
+| Prefix (SEO) | Alt prefix | Content |
+|--------------|------------|---------|
+| `/assets/` | `/assets/` | CSS, JS, images, JSON |
+| `/uv/` | `/network/` | Ultraviolet service worker files |
+| `/scram/` | `/worker/` | Scramjet service worker files |
+| `/epoxy/` | `/epoch/` | Epoxy transport |
+| `/libcurl/` | `/unix/` | libcurl transport |
+| `/baremux/` | `/gmt/` | Bare-Mux transport switcher |
+| `/chii/` | `/ani/` | Chii remote inspector |

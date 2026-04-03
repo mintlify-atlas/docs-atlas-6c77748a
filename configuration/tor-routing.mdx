@@ -1,0 +1,168 @@
+---
+title: "Tor and SOCKS5 routing"
+description: "Configure Tor, Onion routing, and SOCKS5 proxies in Holy Unblocker LTS"
+---
+
+Holy Unblocker LTS supports routing all Scramjet and Ultraviolet traffic through a SOCKS5 proxy, including the Tor network. This is handled via the `proxy` option passed to the Bare-Mux transport, which in turn uses the Wisp server as an intermediary.
+
+## How Tor routing works
+
+When a user enables Tor in the Settings menu, the `UseSocks5` key in localStorage is set to `"tor"`. On the next page load, `register-sw.js` reads this value and passes the corresponding SOCKS5 URL to the transport:
+
+```js
+if ('string' === typeof readStorage('UseSocks5'))
+  transportOptions.proxy = proxyUrl[readStorage('UseSocks5')];
+
+const connection = new BareMux.BareMuxConnection('{{route}}{{/baremux/worker.js}}');
+await connection.setTransport(transportMode, [transportOptions]);
+```
+
+All subsequent requests made by Ultraviolet or Scramjet flow through:
+
+1. The browser's service worker
+2. The Bare-Mux transport (epoxy or libcurl)
+3. The Wisp WebSocket server running on your host
+4. The SOCKS5 proxy (e.g. Tor on port 9050)
+5. The destination
+
+This means you can reach `.onion` sites from any browser — including Chromium-based browsers — without the Tor Browser installed, as long as the Tor daemon is running on the server.
+
+## Setting up Tor
+
+<Steps>
+  <Step title="Install Tor">
+    Follow the official Tor Project installation guide for your platform:
+    - GUI (Tor Browser): [https://tb-manual.torproject.org/installation/](https://tb-manual.torproject.org/installation/)
+    - CLI (no GUI): [https://community.torproject.org/onion-services/setup/install/](https://community.torproject.org/onion-services/setup/install/)
+
+    For a VPS or headless server, the CLI installation is the right choice.
+  </Step>
+  <Step title="Start the Tor service">
+    On Linux with systemd, start and optionally enable Tor to run on boot:
+
+    ```bash
+    sudo systemctl start tor
+    sudo systemctl enable tor
+    ```
+
+    On Windows, starting the Tor Browser or running `tor.exe` directly is sufficient.
+  </Step>
+  <Step title="Verify Tor is listening">
+    Confirm that the Tor SOCKS5 listener is on port 9050:
+
+    ```bash
+    ss -tlnp | grep 9050
+    ```
+
+    You should see a line showing Tor listening on `127.0.0.1:9050`.
+  </Step>
+  <Step title="Enable Tor in Holy Unblocker">
+    Open the Settings menu in Holy Unblocker and select **Tor** under the SOCKS5 / Onion Routing option. This sets `UseSocks5 = "tor"` in localStorage. Refresh the page to apply the new transport configuration.
+  </Step>
+</Steps>
+
+<Warning>
+  The GUI Tor Browser listens on port **9150**, not 9050. If you are using the Tor Browser rather than the standalone Tor service, update the `tor` entry in `proxyUrl` accordingly:
+
+  ```js
+  proxyUrl = {
+    tor: 'socks5h://localhost:9150', // Tor Browser GUI
+    eu: 'socks5h://localhost:7000',
+    jp: 'socks5h://localhost:7001',
+  }
+  ```
+</Warning>
+
+## Port configuration
+
+### `proxyUrl` in `register-sw.js`
+
+```js
+proxyUrl = {
+  tor: 'socks5h://localhost:9050',
+  eu: 'socks5h://localhost:7000',
+  jp: 'socks5h://localhost:7001',
+},
+```
+
+Each key maps a region name to a SOCKS5 URL. The `socks5h` scheme instructs the transport to resolve hostnames through the proxy rather than locally — this is required for `.onion` addresses.
+
+| Key | Default URL | Notes |
+|-----|-------------|-------|
+| `tor` | `socks5h://localhost:9050` | Standard Tor daemon port. Use 9150 for Tor Browser GUI. |
+| `eu` | `socks5h://localhost:7000` | Regional proxy — European exit node |
+| `jp` | `socks5h://localhost:7001` | Regional proxy — Japan exit node |
+
+### Wisp server port whitelist in `server.mjs`
+
+The Wisp server enforces a strict port whitelist. Connections to any port not on the list will be rejected:
+
+```js
+wisp.options.port_whitelist = [
+  80,
+  443,
+  9050,
+  7000,
+  7001
+];
+```
+
+| Port | Purpose |
+|------|---------|
+| `80` | Standard HTTP |
+| `443` | Standard HTTPS |
+| `9050` | Tor SOCKS5 daemon |
+| `7000` | EU regional SOCKS5 proxy |
+| `7001` | JP regional SOCKS5 proxy |
+
+<Note>
+  If you add a custom SOCKS5 proxy on a non-standard port, you must add that port to `wisp.options.port_whitelist` as well, or the Wisp server will refuse to connect.
+</Note>
+
+### Other Wisp server options
+
+```js
+wisp.options.allow_udp_streams = false;
+wisp.options.allow_loopback_ips = true;
+```
+
+| Option | Value | Meaning |
+|--------|-------|---------|
+| `allow_udp_streams` | `false` | UDP streams are disabled. All proxied traffic uses TCP only. |
+| `allow_loopback_ips` | `true` | The Wisp server is allowed to connect to loopback addresses (127.0.0.1, ::1). This is required because the SOCKS5 proxies run locally on the same machine. |
+
+<Warning>
+  `allow_loopback_ips: true` is needed for Tor and local SOCKS5 proxies to work. If you are concerned about server-side request forgery (SSRF), ensure your NGINX configuration prevents external clients from reaching internal services on other ports. See the README for the recommended NGINX-only reverse proxy setup.
+</Warning>
+
+## Adding custom SOCKS5 proxies
+
+You can add as many proxy regions as you need by editing `proxyUrl` in `views/assets/js/register-sw.js`:
+
+```js
+proxyUrl = {
+  tor: 'socks5h://localhost:9050',
+  eu: 'socks5h://localhost:7000',
+  jp: 'socks5h://localhost:7001',
+  myproxy: 'socks5h://my-server:8080',
+},
+```
+
+Then allow the new port in `src/server.mjs`:
+
+```js
+wisp.options.port_whitelist = [80, 443, 9050, 7000, 7001, 8080];
+```
+
+To activate the proxy, the `UseSocks5` value in localStorage must be set to the matching key (`"myproxy"` in this example). You can expose additional options in the Settings menu by modifying `views/assets/js/csel.js`, or set the value programmatically:
+
+```js
+// Example: set from the browser console
+const storageId = 'hu-lts-storage'; // resolved at build time
+const data = JSON.parse(localStorage.getItem(storageId)) || {};
+data.UseSocks5 = 'myproxy';
+localStorage.setItem(storageId, JSON.stringify(data));
+location.reload();
+```
+
+To disable SOCKS5 routing entirely, remove the `UseSocks5` key from localStorage or set it to a non-string value.

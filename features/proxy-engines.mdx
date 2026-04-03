@@ -1,0 +1,138 @@
+---
+title: "Proxy engines"
+description: "Scramjet, Ultraviolet, and Rammerhead — the three built-in proxy engines in Holy Unblocker LTS"
+---
+
+Holy Unblocker ships with three proxy engines. Each takes a different approach to tunneling web traffic, giving you options for speed, compatibility, and filter evasion.
+
+<CardGroup cols={3}>
+  <Card title="Scramjet" icon="bolt">
+    Newest and fastest. Developed by MercuryWorkshop. Best CAPTCHA support and Tor routing.
+  </Card>
+  <Card title="Ultraviolet" icon="globe">
+    Broad site compatibility. Developed by Titanium Network. Built-in adblocking via blacklist service worker.
+  </Card>
+  <Card title="Rammerhead" icon="shield">
+    Session-based, no service workers. Maximum filter evasion via shuffled per-session dictionaries.
+  </Card>
+</CardGroup>
+
+## Scramjet
+
+Scramjet is developed by MercuryWorkshop and is the newest and fastest engine in Holy Unblocker.
+
+- Best CAPTCHA support of the three engines
+- Uses the Wisp protocol via Bare-Mux; default transport: `libcurl`
+- Proxied URL prefix: `/scram/network/`
+- Route: `/scramjet` (or `/working` when `usingSEO` is disabled)
+
+**Service worker files:**
+
+| File | Purpose |
+|------|---------|
+| `scram/scramjet.sw.js` | Standard service worker |
+| `scram/scramjet.sw-blacklist.js` | Service worker with adblocking |
+
+**`ScramjetController` flags** (all default to `false`):
+
+| Flag | Description |
+|------|-------------|
+| `rewriterLogs` | Enable rewriter debug logs |
+| `naiiveRewriter` | Use the naive rewriter instead of the default |
+| `scramitize` | Enable additional obfuscation |
+
+## Ultraviolet
+
+Ultraviolet is developed by Titanium Network and offers the widest site compatibility.
+
+- Integrated adblocking via a modified blacklist service worker
+- Uses the Wisp protocol via Bare-Mux
+- UV proxied URL prefix: `/uv/` (or `/network/` when `usingSEO` is disabled)
+- Route: `/ultraviolet` (or `/networking` when `usingSEO` is disabled)
+
+**Service worker files:**
+
+| File | Purpose |
+|------|---------|
+| `uv/sw.js` | Standard service worker |
+| `uv/sw-blacklist.js` | Service worker with adblocking |
+
+## Rammerhead
+
+Rammerhead is a session-based proxy that requires no service workers, making it the hardest to fingerprint or block.
+
+- Maximum filter evasion through shuffled per-session dictionaries
+- Has its own session management API — no Bare-Mux or Wisp dependency
+- Route: `/rammerhead` (or `/physics` when `usingSEO` is disabled)
+
+**Session API endpoints:**
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/newsession` | Create a new proxy session |
+| `/editsession` | Modify an existing session |
+| `/api/shuffleDict` | Retrieve the session's shuffle dictionary |
+| `/mainport` | Retrieve the proxy port |
+
+<Note>
+  Rammerhead does not support adblocking or Tor/SOCKS5 routing. For those features, use Scramjet or Ultraviolet.
+</Note>
+
+## Comparison table
+
+| Feature | Scramjet | Ultraviolet | Rammerhead |
+|---------|----------|-------------|------------|
+| Transport | Wisp + Bare-Mux | Wisp + Bare-Mux | Session-based |
+| CAPTCHA support | Best | Limited | Limited |
+| Adblocking | Yes | Yes | No |
+| Tor / SOCKS5 routing | Yes | Yes | No |
+| Filter evasion | High | High | Maximum |
+
+## Transport (Bare-Mux)
+
+Both Scramjet and Ultraviolet use [Bare-Mux](https://github.com/MercuryWorkshop/bare-mux) to swap the underlying transport without changing application code. Two transports are available:
+
+<CardGroup cols={2}>
+  <Card title="libcurl (default)" icon="circle-check">
+    libcurl compiled to WebAssembly. Selected by default. Lower latency and broader protocol support.
+  </Card>
+  <Card title="epoxy" icon="plug">
+    EpoxyTransport — an alternative WebAssembly-based transport. Switch to it via the Settings menu.
+  </Card>
+</CardGroup>
+
+The transport is resolved in `register-sw.js` at startup:
+
+```js
+const transports = {
+  '{{epoxy}}': '{{route}}{{/epoxy/index.mjs}}',
+  '{{libcurl}}': '{{route}}{{/libcurl/index.mjs}}',
+},
+defaultMode = '{{libcurl}}';
+
+transports.default = transports[defaultMode];
+
+// Resolve the active transport from localStorage, fall back to default
+const transportMode =
+  transports[readStorage('Transport')] || transports.default;
+```
+
+The selected transport is stored in `localStorage` under the key `Transport`. You can switch it from the [Settings menu](/features/settings-menu).
+
+## Wisp protocol
+
+Both Scramjet and Ultraviolet tunnel traffic through [Wisp](https://github.com/MercuryWorkshop/wisp-protocol) — a WebSocket-to-TCP multiplexing protocol. The Wisp server runs on the same origin as your Holy Unblocker instance:
+
+```js
+const wispUrl =
+  (location.protocol === 'https:' ? 'wss' : 'ws') +
+  '://' +
+  location.host +
+  '{{route}}{{/wisp/}}';
+```
+
+**Allowed destination ports:** `80`, `443`, `9050`, `7000`, `7001`
+
+<Tip>
+  Ports `9050`, `7000`, and `7001` correspond to Tor and regional SOCKS5 proxies. See [Settings menu](/features/settings-menu) for details on enabling Tor routing.
+</Tip>

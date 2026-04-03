@@ -1,0 +1,128 @@
+---
+title: "Deployment"
+description: "Deploy Holy Unblocker LTS to the cloud with one click or set up on your own VPS"
+---
+
+<Warning>
+  For self-hosting in production, use the **`v6.9.5_production`** branch — not `master`. The master branch contains work-in-progress changes that are not production-ready. Production branches have filter evasion features enabled automatically.
+</Warning>
+
+## Free deployment options
+
+<CardGroup cols={2}>
+  <Card title="Koyeb" icon="rocket" href="https://app.koyeb.com/deploy?name=holy-unblocker&type=git&repository=QuiteAFancyEmerald%2FHoly-Unblocker&branch=v6.9.5_production&builder=dockerfile&ports=8080%3Bhttp%3B%2F">
+    **Primary recommendation.** One-click deploy using the production branch Dockerfile. Runs on port 8080.
+  </Card>
+  <Card title="Oracle Cloud" icon="cloud" href="https://cloud.oracle.com/resourcemanager/stacks/create?zipUrl=https://github.com/BinBashBanana/deploy-buttons/archive/refs/heads/main.zip">
+    Free-tier VPS with generous compute and bandwidth limits.
+  </Card>
+  <Card title="Render" icon="layers" href="https://render.com/deploy?repo=https://github.com/QuiteAFancyEmerald/Holy-Unblocker">
+    One-click deploy using the included `render.yaml` configuration.
+  </Card>
+  <Card title="Fly.io" icon="plane" href="https://fly.io/launch?repo=https://github.com/QuiteAFancyEmerald/Holy-Unblocker">
+    Deploy via Fly.io's app platform with a managed container runtime.
+  </Card>
+</CardGroup>
+
+<Note>
+  Replit is no longer free, and Heroku has a policy against web proxies. Use GitHub Codespaces for cloud development or Koyeb for free hosting.
+</Note>
+
+## Paid and production options
+
+These providers require payment information but offer more control, better performance, or dedicated resources.
+
+<CardGroup cols={2}>
+  <Card title="Azure" icon="microsoft" href="https://deploy.azure.com/?repository=https://github.com/QuiteAFancyEmerald/Holy-Unblocker">
+    Microsoft Azure App Service deployment.
+  </Card>
+  <Card title="IBM Cloud" icon="cube" href="https://cloud.ibm.com/devops/setup/deploy?repository=https://github.com/QuiteAFancyEmerald/Holy-Unblocker">
+    IBM Cloud DevOps pipeline deployment.
+  </Card>
+  <Card title="AWS Amplify" icon="aws" href="https://console.aws.amazon.com/amplify/home#/deploy?repo=https://github.com/QuiteAFancyEmerald/Holy-Unblocker">
+    AWS Amplify Console one-click deploy.
+  </Card>
+  <Card title="Google Cloud Run" icon="google" href="https://deploy.cloud.run/?git_repo=https://github.com/QuiteAFancyEmerald/Holy-Unblocker">
+    Serverless container deployment on Google Cloud.
+  </Card>
+</CardGroup>
+
+### Dedicated VPS
+
+For maximum performance and control, host on a dedicated VPS. Recommended providers:
+
+- **[Crunchbits](https://crunchbits.com/)** — current official hosting provider for Holy Unblocker LTS
+- **[Oracle Cloud](https://www.oracle.com/cloud)** — free tier available with paid upgrade options
+- **[Azure](https://azure.microsoft.com)** — free and paid tiers available
+
+When using a VPS, follow the [VPS setup guide](/self-hosting/vps-setup) and set `production` to `true` in `config.json` to enable PM2 process management.
+
+## GitHub Codespaces
+
+GitHub Codespaces provides a cloud development environment you can use from any browser, including Chromebooks. This is suitable for development and testing, not long-term production hosting.
+
+<Steps>
+  <Step title="Fork and star the repository">
+    Fork the [Holy-Unblocker repository](https://github.com/QuiteAFancyEmerald/Holy-Unblocker) to your GitHub account, then star it.
+  </Step>
+
+  <Step title="Open Codespaces">
+    Go to [https://github.com/codespaces](https://github.com/codespaces). Make sure you are signed into your GitHub account.
+  </Step>
+
+  <Step title="Create a new codespace">
+    Click **New codespace** and configure it as follows:
+
+    - **Repository:** `[YOUR_USERNAME]/Holy-Unblocker`
+    - **Branch:** `master`
+    - **Dev container configuration:** Holy Unblocker LTS
+
+    Click **Create codespace** and wait for the container to finish setting up.
+  </Step>
+
+  <Step title="Install and start">
+    In the terminal that opens inside the codespace, run:
+
+    ```bash
+    npm run fresh-install
+    npm start
+    ```
+  </Step>
+
+  <Step title="Make the port public">
+    When the application popup appears, click **Make public**. Then open the **Ports** tab in VS Code to find the forwarded URL for port `8080`.
+  </Step>
+</Steps>
+
+## Environment requirements
+
+| Requirement | Value |
+|-------------|-------|
+| Node.js version | `20.x` |
+| Default port | `8080` |
+| Production branch | `v6.9.5_production` |
+| Docker image | `quiteafancyemerald/holy-unblocker:6.9.5` |
+
+The port can be changed in `ecosystem.config.js` by setting the `PORT` environment variable under `env` or `env_production`.
+
+## Docker
+
+You can pull and run the official Docker image directly:
+
+```bash
+docker pull quiteafancyemerald/holy-unblocker:6.9.5
+docker run -p 8080:8080 quiteafancyemerald/holy-unblocker:6.9.5
+```
+
+For production deployments via Dockerfile (e.g. on Koyeb), use the `v6.9.5_production` branch — it includes a `Dockerfile` configured for port `8080`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Server configuration" icon="sliders" href="/configuration/server">
+    Configure production mode, disguise files, SEO mode, and more
+  </Card>
+  <Card title="NGINX setup" icon="server" href="/self-hosting/nginx">
+    Configure NGINX as a reverse proxy for Holy Unblocker
+  </Card>
+</CardGroup>

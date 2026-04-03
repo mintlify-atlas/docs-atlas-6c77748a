@@ -1,0 +1,82 @@
+---
+title: "Games library"
+description: "HTML5, Flash, and RetroArch emulator games built into Holy Unblocker LTS"
+---
+
+Holy Unblocker includes a built-in game library with three categories. Game assets are stored separately from the main repository and must be installed manually.
+
+<CardGroup cols={3}>
+  <Card title="HTML5 games" icon="gamepad">
+    Served from `views/archive/g/`. Managed by `h5-nav.json`.
+  </Card>
+  <Card title="Flash games" icon="bolt">
+    Runs via the Ruffle WebAssembly emulator. Managed by `flash-nav.json`.
+  </Card>
+  <Card title="RetroArch / Emulators" icon="microchip">
+    Powered by webretro. ROMs not included. Managed by `emu-nav.json`.
+  </Card>
+</CardGroup>
+
+## Categories
+
+### HTML5 games
+
+**Route:** `/web-games` (or `/dictionary` when `usingSEO` is disabled)
+
+HTML5 games are served from `views/archive/g/` and listed in `views/assets/json/h5-nav.json`. The full game archive must be downloaded separately from the HU-Archive repository.
+
+### Flash games
+
+**Route:** `/flash-games` (or `/textbook` when `usingSEO` is disabled)
+
+Flash games use [Ruffle](https://ruffle.rs/) — an open-source Adobe Flash emulator compiled to WebAssembly. Flash game files are stored in `views/archive/gfiles/flash/` and listed in `views/assets/json/flash-nav.json`.
+
+### RetroArch / Emulators
+
+**Routes:**
+
+| Route (SEO on) | Route (SEO off) | Purpose |
+|----------------|-----------------|---------|
+| `/emulators` | `/catalogue` | Emulator selection page |
+| `/retro-games` | `/math` | Emulator library page |
+
+RetroArch games use [webretro](https://github.com/BinBashBanana/webretro) — RetroArch compiled to WebAssembly. Emulator files live in `views/archive/gfiles/rarch/` and support many systems including GBA, N64, and SNES.
+
+<Warning>
+  ROMs are **not included** due to piracy concerns. You must supply your own ROM files. The `EmuLibrary` feature is not available in the public release.
+</Warning>
+
+## Installing game assets
+
+<Steps>
+  <Step title="Download the HU-Archive">
+    Download the latest release from the [HU-Archive repository](https://github.com/QuiteAFancyEmerald/HU-Archive).
+  </Step>
+  <Step title="Extract into views/archive/">
+    Extract the downloaded archive into the `views/archive/` directory of your Holy Unblocker installation. Confirm the following directories exist after extraction:
+
+    - `views/archive/g/` — HTML5 games
+    - `views/archive/gfiles/flash/` — Flash emulator and game files
+    - `views/archive/gfiles/rarch/` — RetroArch (webretro)
+  </Step>
+  <Step title="Restart the server">
+    ```bash
+    npm restart
+    ```
+  </Step>
+</Steps>
+
+## Navigation JSON files
+
+Games are loaded dynamically from JSON files in `views/assets/json/`. Adding an entry to the relevant file is all that is needed to surface a game on the page — no server restart required.
+
+| File | Purpose |
+|------|---------|
+| `h5-nav.json` | HTML5 games list |
+| `flash-nav.json` | Flash games list |
+| `emu-nav.json` | Emulator list |
+| `emulib-nav.json` | Emulator library |
+
+<Tip>
+  The `common.js` script reads these JSON files at page load and appends game entries automatically. Editing a JSON file takes effect on the next page load.
+</Tip>

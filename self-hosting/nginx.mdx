@@ -1,0 +1,81 @@
+---
+title: "NGINX configuration"
+description: "Configure NGINX as a reverse proxy for Holy Unblocker LTS"
+---
+
+NGINX is required as a reverse proxy for Holy Unblocker LTS. Holy Unblocker listens on port `8080` and NGINX proxies public traffic from ports `80` and `443`.
+
+<Warning>
+  **Use NGINX — not Caddy or Apache.** Holy Unblocker uses [wisp-js](https://github.com/MercuryWorkshop/wisp-server-node) which establishes loopback connections internally. Caddy and Apache handle these loopbacks in ways that introduce security risks. NGINX handles them safely.
+</Warning>
+
+## Basic configuration
+
+Create a new site config at `/etc/nginx/sites-available/holy-unblocker`:
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Replace `yourdomain.com` with your actual domain.
+
+Enable the site and reload NGINX:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/holy-unblocker /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+## WebSocket headers
+
+The `Upgrade` and `Connection` headers in the config above are required. Holy Unblocker uses Wisp, which communicates over WebSockets. Without these headers, proxy connections will fail.
+
+```nginx
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+```
+
+## SSL with Let's Encrypt
+
+Use Certbot to issue a free TLS certificate and automatically update your NGINX config:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+Certbot modifies your NGINX config to add `listen 443 ssl` and redirect HTTP to HTTPS. After issuance, reload NGINX:
+
+```bash
+sudo systemctl reload nginx
+```
+
+Certificates are valid for 90 days. Certbot installs a systemd timer that handles automatic renewal.
+
+<Note>
+  If you are using Cloudflare in front of your server, set Cloudflare's SSL/TLS mode to **Full** when using Let's Encrypt, or **Flexible** if you are only terminating SSL at Cloudflare. See the [domain and DNS setup](/self-hosting/domain-dns) guide.
+</Note>
+
+## Reloading after changes
+
+Any time you modify your NGINX config, test and reload:
+
+```bash
+sudo nginx -t        # validate config syntax
+sudo systemctl reload nginx
+```

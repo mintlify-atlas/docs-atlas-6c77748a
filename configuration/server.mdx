@@ -1,0 +1,212 @@
+---
+title: "Server configuration"
+description: "Configure Holy Unblocker LTS using config.json and ecosystem.config.js"
+---
+
+Holy Unblocker LTS is configured through two files:
+
+- **`config.json`** — controls application behavior: minification, obfuscation, production mode, and routing disguise.
+- **`ecosystem.config.js`** — controls the PM2 process manager: port, environment, restart policies, and scheduled jobs.
+
+## config.json
+
+Located at the root of the project. All options apply on server start.
+
+```json config.json
+{
+  "title": "HU LTS",
+  "host": "0.0.0.0",
+  "pathname": "/",
+  "minifyScripts": true,
+  "randomizeIdentifiers": true,
+  "production": false,
+  "disguiseFiles": true,
+  "usingSEO": false
+}
+```
+
+### Options
+
+<ParamField path="title" type="string" default="HU LTS">
+  The display title for the Holy Unblocker LTS instance. Used in page metadata.
+</ParamField>
+
+<ParamField path="host" type="string" default="0.0.0.0">
+  The host address the server binds to. Use `0.0.0.0` to accept connections on all interfaces (required for most cloud and VPS deployments). Use `127.0.0.1` to restrict to localhost only.
+</ParamField>
+
+<ParamField path="pathname" type="string" default="/">
+  URL path prefix for all routes. Useful when serving Holy Unblocker under a subdirectory. Trailing slashes and non-word characters are stripped automatically.
+</ParamField>
+
+<ParamField path="minifyScripts" type="boolean" default="true">
+  When enabled, static assets (JavaScript and CSS) are automatically minified when the server starts. This reduces page load times for end users. Disable during active development to preserve readable source output.
+</ParamField>
+
+<ParamField path="randomizeIdentifiers" type="boolean" default="true">
+  Enables experimental proxy global randomization for Ultraviolet. This randomizes internal UV identifiers at build time, which reduces the chance of UV being detected by extension-based content filters. This is an experimental feature.
+</ParamField>
+
+<ParamField path="production" type="boolean" default="false">
+  Enables production mode. When set to `true`, Holy Unblocker uses a pre-configured PM2 process management setup that includes:
+
+  - Cache control
+  - Scheduled Rammerhead session cleanup jobs
+  - Automatic source rewrites
+
+  Set this to `true` on a VPS or any long-running server deployment. Leave as `false` for local development.
+
+  <Warning>
+    You must have PM2 available (it is included as a dependency) for production mode to work. When `production` is `false`, the server runs as a standard Node.js process without PM2 workers.
+  </Warning>
+</ParamField>
+
+<ParamField path="disguiseFiles" type="boolean" default="true">
+  Enables DOM masquerading. When active, Holy Unblocker obfuscates real content fetches by disguising requests, decompressing responses, and reconstructing the DOM tree.
+
+  **Effect on routing:** When `disguiseFiles` is `true`, the entry point becomes `/login` rather than the root path (`/`). Users must visit `/login` first — this page provides the local authentication key required for the page loader to fetch site content.
+
+  <Note>
+    If you link directly to your Holy Unblocker instance, make sure the link points to `/login` when `disguiseFiles` is enabled.
+  </Note>
+</ParamField>
+
+<ParamField path="usingSEO" type="boolean" default="false">
+  Enables source randomization. When set to `false` (the default), Holy Unblocker swaps recognizable route names and file names with innocuous aliases to prevent keyword-based network or extension filtering.
+
+  Example aliases when `usingSEO` is `false`:
+
+  | Original route | Aliased route |
+  |----------------|--------------|
+  | `games` | `books` |
+  | `ultraviolet` | `networking` |
+  | `scramjet` | `working` |
+  | `rammerhead` | `physics` |
+  | `youtube` | `wiki` |
+  | `flash-games` | `textbook` |
+
+  Set `usingSEO` to `true` only if you want search engines to index the real route names — for example, on an open public instance where discoverability matters more than evasion.
+</ParamField>
+
+---
+
+## ecosystem.config.js
+
+Located at the root of the project. Controls PM2 process management, port assignment, and scheduled jobs. This file is used when `production` is `true` in `config.json` or when you run PM2 directly.
+
+```js ecosystem.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'HolyUBLTS',
+      script: './backend.js',
+      env: {
+        PORT: 8080,
+        NODE_ENV: 'development',
+      },
+      env_production: {
+        PORT: 8080,
+        NODE_ENV: 'production',
+      },
+      instances: '1',
+      exec_interpreter: 'babel-node',
+      exec_mode: 'fork',
+      autorestart: true,
+      exp_backoff_restart_delay: 100,
+      cron_restart: '*/10 * * * *',
+      kill_timeout: 3000,
+      watch: false,
+    },
+    {
+      name: 'HolyUBLTS-src-refresh',
+      script: './run-command.mjs',
+      args: 'build',
+      env: {
+        NODE_ENV: 'development',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+      },
+      instances: '1',
+      exec_interpreter: 'babel-node',
+      exec_mode: 'fork',
+      autorestart: true,
+      restart_delay: 600000,
+      kill_timeout: 3000,
+      watch: false,
+    },
+    {
+      name: 'HolyUBLTS-cache-clean',
+      script: './run-command.mjs',
+      args: 'clean',
+      env: {
+        NODE_ENV: 'development',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+      },
+      instances: '1',
+      exec_interpreter: 'babel-node',
+      exec_mode: 'fork',
+      autorestart: true,
+      restart_delay: 604800000,
+      kill_timeout: 3000,
+      watch: false,
+    },
+  ],
+};
+```
+
+### PM2 processes
+
+Three PM2 processes are defined:
+
+#### HolyUBLTS
+
+The main application server process.
+
+<ParamField path="env.PORT" type="number" default="8080">
+  The port the server listens on. Change this value in both `env` and `env_production` to run on a different port. Make sure your firewall and reverse proxy (NGINX) are updated to match.
+</ParamField>
+
+<ParamField path="env.NODE_ENV" type="string" default="development">
+  Set to `development` for local use. Set to `production` (via `env_production`) when running in a production environment. Controls logging verbosity and certain Node.js optimizations.
+</ParamField>
+
+<ParamField path="instances" type="string" default="1">
+  Number of process instances. Currently set to `1` (fork mode). Cluster mode is not used.
+</ParamField>
+
+<ParamField path="exec_interpreter" type="string" default="babel-node">
+  The process executor. Uses `babel-node` from the `@babel/node` devDependency to support modern JavaScript syntax in the entry scripts.
+</ParamField>
+
+<ParamField path="exec_mode" type="string" default="fork">
+  PM2 execution mode. `fork` spawns a single child process. This is the expected mode for Holy Unblocker LTS.
+</ParamField>
+
+<ParamField path="autorestart" type="boolean" default="true">
+  Automatically restarts the process if it crashes.
+</ParamField>
+
+<ParamField path="exp_backoff_restart_delay" type="number" default="100">
+  Initial delay in milliseconds for exponential backoff restart. When the process crashes repeatedly, PM2 increases the wait time between restarts starting from this value (100ms).
+</ParamField>
+
+<ParamField path="cron_restart" type="string" default="*/10 * * * *">
+  Cron expression for scheduled restarts. The main server process restarts every 10 minutes. This helps clear accumulated state and ensures Rammerhead session cleanup runs on schedule.
+</ParamField>
+
+#### HolyUBLTS-src-refresh
+
+Runs `node run-command.mjs build` on a schedule to rebuild static source assets.
+
+- **Restart delay:** 10 minutes (`restart_delay: 1000 * 60 * 10`)
+- **Purpose:** Keeps built assets current in long-running deployments
+
+#### HolyUBLTS-cache-clean
+
+Runs `node run-command.mjs clean` on a schedule to clear Rammerhead session cache.
+
+- **Restart delay:** 7 days (`restart_delay: 1000 * 60 * 60 * 24 * 7`)
+- **Purpose:** Prevents Rammerhead cache from growing unbounded over time

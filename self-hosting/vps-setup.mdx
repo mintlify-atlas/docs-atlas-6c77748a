@@ -1,0 +1,121 @@
+---
+title: "VPS setup"
+description: "Set up Holy Unblocker LTS on a Linux VPS (Ubuntu/Debian)"
+---
+
+A VPS gives you full control over your Holy Unblocker instance — custom domains, Tor support, and production-grade PM2 process management. This guide covers Ubuntu and Debian.
+
+## Recommended VPS providers
+
+<CardGroup cols={2}>
+  <Card title="Crunchbits" icon="server" href="https://crunchbits.com/">
+    Current hosting provider for official Holy Unblocker instances. Good performance and pricing.
+  </Card>
+  <Card title="Oracle Cloud" icon="cloud" href="https://www.oracle.com/cloud">
+    Free tier available with a paid option for dedicated resources.
+  </Card>
+  <Card title="Azure" icon="microsoft" href="https://azure.microsoft.com">
+    Free and paid tiers. Suitable for production deployments.
+  </Card>
+  <Card title="Greencloud" icon="leaf" href="https://greencloudvps.com">
+    Budget-friendly paid VPS hosting.
+  </Card>
+</CardGroup>
+
+## Setup
+
+<Steps>
+  <Step title="Update your system and install dependencies">
+    Connect to your VPS over SSH, then run:
+
+    ```bash
+    sudo apt update && sudo apt upgrade
+    sudo apt install curl git nginx
+    ```
+  </Step>
+
+  <Step title="Install Node.js 20 via nvm">
+    Holy Unblocker LTS requires Node.js 20.x. Use [nvm](https://github.com/nvm-sh/nvm) to manage your Node version:
+
+    ```bash
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+    nvm install 20
+    nvm use 20
+    ```
+
+    Verify the version:
+
+    ```bash
+    node -v
+    ```
+  </Step>
+
+  <Step title="Clone the repository">
+    <Warning>
+      Switch to a production branch before deploying. The `master` branch contains unstable, work-in-progress changes. Use a branch like `v6.9.5_production` for maximum filter evasion and stable request handling.
+    </Warning>
+
+    ```bash
+    git clone https://github.com/QuiteAFancyEmerald/Holy-Unblocker.git
+    cd Holy-Unblocker
+    git checkout v6.9.5_production
+    ```
+  </Step>
+
+  <Step title="Enable production mode in config.json">
+    Open `config.json` and set `production` to `true` before starting the server:
+
+    ```json
+    {
+      "production": true
+    }
+    ```
+
+    Setting `production: true` enables:
+    - **PM2** process management via `ecosystem.config.js`
+    - **Cache control** for static assets
+    - **Rammerhead session jobs** for automatic cache cleaning
+    - **Source rewrites** for filter evasion
+
+    The PM2 configuration in `ecosystem.config.js` runs three workers: the main server (`HolyUBLTS`), a periodic source rebuild (`HolyUBLTS-src-refresh`), and a weekly cache cleaner (`HolyUBLTS-cache-clean`).
+  </Step>
+
+  <Step title="Install dependencies and start the server">
+    ```bash
+    npm run fresh-start
+    ```
+
+    `fresh-start` installs all dependencies, runs a build, and starts the server. On subsequent restarts use:
+
+    ```bash
+    npm restart
+    ```
+
+    Other useful commands:
+
+    | Command | Description |
+    |---|---|
+    | `npm run kill` | Stop all PM2 production processes |
+    | `npm run clean` | Clear Rammerhead session cache |
+    | `npm run build` | Rebuild static assets |
+    | `npm run test` | Test service endpoints |
+  </Step>
+
+  <Step title="Reload NGINX">
+    After starting Holy Unblocker, reload NGINX so it picks up any configuration changes:
+
+    ```bash
+    sudo systemctl restart nginx
+    ```
+
+    See the [NGINX configuration](/self-hosting/nginx) guide for proxy setup.
+  </Step>
+</Steps>
+
+<Note>
+  Holy Unblocker listens on port `8080` by default. You can change the port in `ecosystem.config.js` under the `PORT` environment variable. The Rammerhead proxy defaults to port `3000`.
+</Note>

@@ -1,0 +1,312 @@
+---
+title: "Proxy configuration"
+description: "Configure proxy engines, transport settings, and the service worker in Holy Unblocker LTS"
+---
+
+The primary file for web proxy configuration is `./views/assets/js/register-sw.js`. It controls service worker registration, transport selection, Wisp routing, and the ScramjetController setup. Client-side navigation logic lives in `./views/assets/js/common.js` (served as the versioned file `common-1735118314.js`).
+
+## Service worker routes (`swRoutes`)
+
+```js
+const swRoutes = {
+  uv: ['{{route}}{{/uv/sw.js}}', '{{route}}{{/uv/sw-blacklist.js}}'],
+  sj: [
+    '{{route}}{{/scram/scramjet.sw.js}}',
+    '{{route}}{{/scram/scramjet.sw-blacklist.js}}'
+  ],
+};
+```
+
+Two service worker variants are available for each proxy engine:
+
+| Key | Index `0` (no adblock) | Index `1` (adblock) |
+|-----|------------------------|---------------------|
+| `uv` | `uv/sw.js` | `uv/sw-blacklist.js` |
+| `sj` | `scram/scramjet.sw.js` | `scram/scramjet.sw-blacklist.js` |
+
+### How the service worker is selected
+
+On page load, `register-sw.js` reads the `HideAds` key from the site's localStorage namespace. The selection logic is:
+
+```js
+const usedSW = swRoutes.uv[readStorage('HideAds') !== false ? 1 : 0];
+```
+
+- If `HideAds` is **explicitly set to `false`**, the standard service worker (index `0`) is used.
+- In all other cases — including when the key is `true` or **not set at all** — the blacklist/adblocking service worker (index `1`) is used.
+
+The same logic applies to Scramjet:
+
+```js
+navigator.serviceWorker.register(
+  swRoutes.sj[readStorage('HideAds') !== false ? 1 : 0]
+);
+```
+
+Any previously registered service worker whose script URL does not match the currently selected one is automatically unregistered before the new one is registered.
+
+<Note>
+  Service workers require HTTPS. On `localhost` and `127.0.0.1` they are allowed over HTTP for local development. Attempting to register on any other host over HTTP throws an error.
+</Note>
+
+## Wisp URL (`wispUrl`)
+
+```js
+wispUrl =
+  (location.protocol === 'https:' ? 'wss' : 'ws') +
+  '://' +
+  location.host +
+  '{{route}}{{/wisp/}}',
+```
+
+The Wisp WebSocket URL is constructed automatically from the browser's current host. It uses `wss://` when the page is served over HTTPS and `ws://` over HTTP. The pathname suffix (`/wisp/`) is derived from the server route prefix and can change when `usingSEO` is disabled (it becomes `/cron/` in that case, per the prefix alias table in `routes.mjs`).
+
+You should not need to change `wispUrl` unless you are running the Wisp server on a separate host or non-standard path.
+
+## SOCKS5 proxy URLs (`proxyUrl`)
+
+```js
+proxyUrl = {
+  tor: 'socks5h://localhost:9050',
+  eu: 'socks5h://localhost:7000',
+  jp: 'socks5h://localhost:7001',
+},
+```
+
+`proxyUrl` maps named keys to SOCKS5 (or HTTP/HTTPS) proxy URLs. When a user selects a proxy region in the Settings menu, the chosen key is stored under `UseSocks5` in localStorage. On the next service worker initialization, the corresponding URL is passed as the `proxy` option to the Bare-Mux transport:
+
+```js
+if ('string' === typeof readStorage('UseSocks5'))
+  transportOptions.proxy = proxyUrl[readStorage('UseSocks5')];
+```
+
+The built-in keys are:
+
+| Key | URL | Purpose |
+|-----|-----|---------|
+| `tor` | `socks5h://localhost:9050` | Local Tor daemon (CLI/service) |
+| `eu` | `socks5h://localhost:7000` | European regional SOCKS5 proxy |
+| `jp` | `socks5h://localhost:7001` | Japan regional SOCKS5 proxy |
+
+### Adding a custom SOCKS5 proxy
+
+To add your own proxy region, edit `proxyUrl` in `register-sw.js`:
+
+```js
+proxyUrl = {
+  tor: 'socks5h://localhost:9050',
+  eu: 'socks5h://localhost:7000',
+  jp: 'socks5h://localhost:7001',
+  myproxy: 'socks5h://my-server:8080', // add your proxy here
+},
+```
+
+Then add the port to the Wisp server whitelist in `src/server.mjs` so the Wisp server will allow connections through it:
+
+```js
+wisp.options.port_whitelist = [80, 443, 9050, 7000, 7001, 8080];
+```
+
+The user must set `UseSocks5` to `"myproxy"` in localStorage (or you can expose the option in the Settings menu) to activate it.
+
+## Transports (`transports` and `defaultMode`)
+
+```js
+transports = {
+  '{{epoxy}}': '{{route}}{{/epoxy/index.mjs}}',
+  '{{libcurl}}': '{{route}}{{/libcurl/index.mjs}}',
+},
+defaultMode = '{{libcurl}}';
+```
+
+Two transport modules are included:
+
+| Key | Module path | Description |
+|-----|-------------|-------------|
+| `epoxy` | `/epoxy/index.mjs` | EpoxyTransport — WebAssembly-based transport |
+| `libcurl` | `/libcurl/index.mjs` | libcurl-transport — curl-based transport, used by default |
+
+`transports.default` is set to `transports[defaultMode]` (i.e. libcurl) immediately after the object is defined, and the object is then frozen:
+
+```js
+transports.default = transports[defaultMode];
+Object.freeze(transports);
+```
+
+The active transport is resolved at registration time:
+
+```js
+const transportMode =
+  transports[readStorage('Transport')] || transports.default;
+```
+
+Users can override the default by selecting a transport in the Settings menu, which writes their choice to the `Transport` key in localStorage. If no preference is stored, libcurl is used.
+
+## ScramjetController
+
+`initializeScramjet()` loads and configures the Scramjet proxy engine:
+
+```js
+const scramjet = new ScramjetController({
+  prefix: '{{route}}{{/scram/network/}}',
+  files: {
+    wasm: '{{route}}{{/scram/scramjet.wasm.wasm}}',
+    all: '{{route}}{{/scram/scramjet.all.js}}',
+    sync: '{{route}}{{/scram/scramjet.sync.js}}',
+  },
+  flags: {
+    rewriterLogs: false,
+    naiiveRewriter: false,
+    scramitize: false,
+  },
+});
+```
+
+### Options
+
+**`prefix`**
+
+The URL prefix under which all Scramjet-proxied requests are served. Defaults to `/scram/network/`. If you change this, update the corresponding route in `src/routes.mjs` and any references in the Scramjet service worker files.
+
+**`files`**
+
+Paths to Scramjet's compiled assets:
+
+| Key | File | Purpose |
+|-----|------|---------|
+| `wasm` | `scramjet.wasm.wasm` | WebAssembly rewriter binary |
+| `all` | `scramjet.all.js` | Full JS bundle |
+| `sync` | `scramjet.sync.js` | Synchronous rewriter |
+
+If you change these file names, also update `./views/scram/scramjet.sw.js`.
+
+**`flags`**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `rewriterLogs` | `false` | Enable verbose rewriter logging to the console |
+| `naiiveRewriter` | `false` | Use the simpler (less compatible) rewriter |
+| `scramitize` | `false` | Enable additional obfuscation of proxied content |
+
+<Note>
+  All three flags default to `false`. Enable `rewriterLogs` temporarily when debugging Scramjet compatibility issues with specific sites.
+</Note>
+
+---
+
+## Client navigation (`common.js`)
+
+The client navigation script (`views/assets/js/common-1735118314.js`) provides the omnibox, proxy dispatch, and stealth frame functionality used across all pages.
+
+### `getDomain`
+
+```js
+const getDomain = () => location.host.replace(/^(?:www|beta)\./, '');
+```
+
+Strips the `www.` or `beta.` subdomain prefix from the current hostname. Used when constructing subdomain-based URLs such as `location.protocol + '//a.' + getDomain()`. Any other subdomain prefix is left intact.
+
+### `goFrame`
+
+```js
+goFrame = (url) => {
+  localStorage.setItem('{{hu-lts}}-frame-url', url);
+  if (location.pathname !== '{{route}}{{/s}}')
+    location.href = '{{route}}{{/s}}?cache={{cacheVal}}';
+  else document.getElementById('frame').src = url;
+},
+```
+
+Navigates to a URL inside the stealth iframe at `/s`. The target URL is saved to localStorage first so it can be restored if the page reloads. If the current page is already `/s`, the iframe `src` is updated directly without a navigation.
+
+### `goProx`
+
+`goProx` maps proxy names to URL handlers. Each entry accepts a URL string and a mode:
+
+```js
+const goProx = Object.freeze({
+  ultraviolet: urlHandler(uvUrl),
+  scramjet: urlHandler(sjUrl),
+  rammerhead: asyncUrlHandler(rhUrl),
+
+  // Subdomain-based presets:
+  terraria: urlHandler(location.protocol + '//a.' + getDomain()),
+
+  // Scramjet preset destinations (selection):
+  youtube:    urlHandler(sjUrl('https://youtube.com')),
+  discord:    urlHandler(sjUrl('https://discord.com/app')),
+  geforcenow: urlHandler(sjUrl('https://play.geforcenow.com/mall')),
+  spotify:    urlHandler(sjUrl('https://open.spotify.com')),
+  tiktok:     urlHandler(sjUrl('https://www.tiktok.com')),
+  twitter:    urlHandler(sjUrl('https://twitter.com')),
+  twitch:     urlHandler(sjUrl('https://www.twitch.tv')),
+  instagram:  urlHandler(sjUrl('https://www.instagram.com')),
+  reddit:     urlHandler(sjUrl('https://www.reddit.com')),
+  // ...and more
+});
+```
+
+Modes available when calling a `goProx` method:
+
+| Mode value | Behavior |
+|------------|----------|
+| `"stealth"` or `1` | Opens URL in the stealth iframe via `goFrame` |
+| `"window"` or `0` | Navigates the current window to the URL |
+| *(omitted)* | Returns the encoded URL string without navigating |
+
+### `prSet`
+
+```js
+const prSet = (id, type) => { ... };
+
+prSet('pr-uv', 'ultraviolet');
+prSet('pr-sj', 'scramjet');
+prSet('pr-rh', 'rammerhead');
+prSet('pr-yt', 'youtube');
+prSet('pr-iv', 'invidious');
+prSet('pr-cg', 'chatgpt');
+prSet('pr-fm', 'fmhy');
+prSet('pr-dc', 'discord');
+prSet('pr-gf', 'geforcenow');
+prSet('pr-sp', 'spotify');
+prSet('pr-tt', 'tiktok');
+prSet('pr-ha', 'hianime');
+prSet('pr-tw', 'twitter');
+prSet('pr-tc', 'twitch');
+prSet('pr-ig', 'instagram');
+prSet('pr-rt', 'reddit');
+prSet('pr-wa', 'wikipedia');
+```
+
+`prSet` binds a proxy form element (identified by its DOM `id`) to a named entry in `goProx`. It attaches:
+
+- **`keydown` on the text input** — submits on Enter
+- **`.pr-go1` buttons** — navigate in window mode
+- **`.pr-go2` buttons** — navigate in stealth mode
+- **Autocomplete** — fetches suggestions from the selected search engine via Scramjet or Rammerhead
+
+The default navigation mode for Ultraviolet and Scramjet is `"stealth"`. Rammerhead and all other types default to `"window"`.
+
+### `getSearchTemplate` / `search`
+
+```js
+const getSearchTemplate = (
+  searchEngine = searchEngines[readStorage('SearchEngine')] ||
+    searchEngines[defaultSearch]
+) => `https://${searchEngine}%s`;
+```
+
+When the user types a non-URL query into the omnibox, it is passed to the selected search engine's URL template (with `%s` replaced by the encoded query). The default search engine is `{{defaultSearch}}` (resolved at build time). Users can change their preferred engine in the Settings menu, which writes to the `SearchEngine` key in localStorage.
+
+### Cache busting
+
+Static assets use versioned file names generated at build time to prevent browsers from serving stale files:
+
+```js
+cacheBustList = {
+  'styles.css': 'styles-1755147161.css',
+  'common.js': 'common-1735118314.js',
+},
+```
+
+These mappings are maintained in `src/routes.mjs`. The server rewrites references to the canonical names to their versioned equivalents before serving HTML.

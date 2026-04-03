@@ -1,0 +1,90 @@
+---
+title: "npm scripts"
+description: "All npm scripts available in Holy Unblocker LTS"
+---
+
+All scripts are defined in `package.json`. They delegate to either `run-command.mjs` (which orchestrates PM2 and build steps) or direct Node.js invocations.
+
+## Script reference
+
+| Script | Description |
+|--------|-------------|
+| `npm run fresh-install` | Verifies the npm cache, updates all packages, runs a clean install (`npm ci`), and installs Rammerhead's dependencies separately. Use this when setting up for the first time or after pulling significant dependency changes. |
+| `npm run fresh-start` | Runs `fresh-install` followed by `npm start`. Useful for a complete from-scratch startup. |
+| `npm start` | Stops any running processes, rebuilds all static assets, then starts the server via PM2. This is the standard way to start after making code or config changes. |
+| `npm restart` | Stops and restarts the server without rebuilding. Use when you need a quick process restart and the built assets are already up to date. |
+| `npm stop` | Gracefully stops all PM2 processes. |
+| `npm run kill` | Force-kills all PM2 processes. Use when a graceful stop is unresponsive. |
+| `npm run build` | Builds static assets via `run-command.mjs build` and then builds Rammerhead (`cd lib/rammerhead && npm run build`). Must be run before starting the server after any source change. |
+| `npm run clean` | Clears the Rammerhead session cache and reformats built files (`run-command.mjs clean format`). Run this if Rammerhead sessions are stale or after a version update. |
+| `npm run clear` | Alias for the cache-clean step only (`run-command.mjs clean`), without the format step. |
+| `npm run proxy-validator` | Runs `proxyServiceValidator.js`, which uses Puppeteer to test all proxy endpoints (Ultraviolet, Rammerhead) and verifies that routes are reachable. Also aliased as `npm test`. |
+| `npm run manual-start` | Starts the server without triggering a build first. Only use this when you know the `views/dist/` output is already current. |
+| `npm run workflow-test` | Runs the workflow validation step via `run-command.mjs workflow`. Used in CI pipelines. |
+| `npm run deployment` | Installs dependencies, builds assets, and starts the server with `node backend.js` directly (no PM2). Intended for deployment platforms such as Koyeb, Render, or Fly.io. |
+
+## Underlying commands
+
+```json
+{
+  "fresh-install": "npm cache verify && npm update && npm ci && cd lib/rammerhead && npm ci",
+  "fresh-start": "npm run fresh-install && npm start",
+  "start": "npm stop && npm run build && npm run manual-start",
+  "restart": "node run-command.mjs stop start",
+  "stop": "node run-command.mjs stop",
+  "kill": "node run-command.mjs stop kill",
+  "build": "node run-command.mjs build && cd lib/rammerhead && npm run build",
+  "clear": "node run-command.mjs clean",
+  "clean": "node run-command.mjs clean format",
+  "proxy-validator": "node proxyServiceValidator.js",
+  "workflow-test": "node run-command.mjs workflow",
+  "manual-start": "node run-command.mjs start",
+  "deployment": "npm install && npm run build && node backend.js"
+}
+```
+
+## Common workflows
+
+**First-time setup:**
+
+```bash
+npm run fresh-install
+npm start
+```
+
+**After pulling changes:**
+
+```bash
+npm start
+```
+
+**Quick process restart (no rebuild):**
+
+```bash
+npm restart
+```
+
+**Clear Rammerhead cache after an update:**
+
+```bash
+npm run clean
+npm run build
+```
+
+**Test that all endpoints are working:**
+
+```bash
+npm test
+```
+
+**Force stop stuck processes:**
+
+```bash
+npm run kill
+```
+
+## Notes
+
+- `npm start` calls `npm stop` internally, so you do not need to stop the server manually before starting.
+- `run-command.mjs` interfaces with PM2. When `production` is set to `true` in `config.json`, PM2 manages three processes: the main server, a periodic rebuild job, and a weekly cache-clean job.
+- `lib/rammerhead` has its own `node_modules` and must be built separately from the main project. Both `fresh-install` and `build` handle this automatically.

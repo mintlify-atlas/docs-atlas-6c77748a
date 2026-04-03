@@ -1,0 +1,191 @@
+---
+title: "Stealth and filter evasion"
+description: "Configure DOM masquerading, source randomization, and identifier obfuscation to evade content filters"
+---
+
+Holy Unblocker LTS includes several filter evasion techniques that can be enabled via `config.json`. These range from disguising the MIME type of served pages to randomizing route names and proxy globals. The production branch has most of these options pre-configured for maximum evasion.
+
+<Warning>
+  The `master` branch is intended for development and may not have all evasion features active by default. Switch to a production branch (e.g. `v6.x_production`) for a deployment intended to bypass filters.
+</Warning>
+
+## DOM masquerading (`disguiseFiles`)
+
+When you set `disguiseFiles: true` in `config.json`, the server changes how pages are delivered to obscure their real content from DPI (deep-packet inspection) scanners and content filters that inspect HTTP response bodies.
+
+### How it works
+
+<Steps>
+  <Step title="Entry point changes to /login">
+    The default route becomes `login` instead of the root `/`:
+
+    ```js
+    // src/routes.mjs
+    default: config.disguiseFiles ? 'login' : 'index',
+    ```
+
+    Users must visit `/login` first. This page delivers a local key to the browser. Without that key, the actual site content is not served.
+  </Step>
+  <Step title="Requests without the disguise extension receive the loader">
+    When a request arrives for a page path that does not end in `.ico`, the server sends back a generic loader HTML file instead of the real page:
+
+    ```js
+    if (!reqPath.endsWith('.' + disguise)) {
+      reply.type(supportedTypes.html).send(loaderFile);
+      reply.hijack();
+      return done();
+    }
+    ```
+
+    The loader (`views/dist/pages/misc/deobf/loader.html`) runs client-side and reconstructs the real DOM after verifying the local key.
+  </Step>
+  <Step title="Real content is served under a disguised MIME type">
+    When the request path ends in `.ico`, the server serves the actual page content with the MIME type `image/vnd.microsoft.icon` instead of `text/html`:
+
+    ```js
+    const supportedTypes = {
+      default: config.disguiseFiles ? 'image/vnd.microsoft.icon' : 'text/html',
+      html: 'text/html',
+      // ...
+      ico: 'image/vnd.microsoft.icon',
+    };
+    ```
+
+    Content filters scanning for HTML responses will not match these requests because the declared content type is an icon file.
+  </Step>
+</Steps>
+
+### Exempt pages
+
+The following pages bypass the disguise mechanism entirely and are served normally:
+
+```js
+let exemptPages = ['login', 'test-shutdown', 'favicon.ico'];
+```
+
+External link redirects (entries in `externalPages` with string values) are also exempt. Static asset directories — `assets`, `uv`, `scram`, `epoxy`, `libcurl`, `baremux`, `wisp`, `chii` — are similarly excluded so that proxy scripts and service workers load without interference.
+
+<Note>
+  When `disguiseFiles` is enabled, a startup message is logged: `disguiseFiles is enabled. Visit src/routes.mjs to see the entry point, listed within the pages variable.`
+</Note>
+
+---
+
+## Source randomization (`usingSEO: false`)
+
+When you set `usingSEO: false` in `config.json`, Holy Unblocker replaces recognizable route names with innocuous aliases before the server starts. This prevents keyword-based URL filters from matching paths like `/ultraviolet` or `/scramjet`.
+
+### Page route aliases
+
+```js
+// src/routes.mjs
+let altPaths = {
+  games: 'books',
+  'web-games': 'dictionary',
+  emulators: 'catalogue',
+  'flash-games': 'textbook',
+  'retro-games': 'math',
+  ultraviolet: 'networking',
+  scramjet: 'working',
+  uverror: 'network-error',
+  sjerror: 'worker-error',
+  rammerhead: 'physics',
+  youtube: 'wiki',
+  partners: 'interface',
+  apps: 'software',
+  flash: 'whiteboard',
+  webretro: 'notebook',
+  'vibe-os': 'pencil',
+};
+```
+
+With `usingSEO: false`, visiting `/ultraviolet` returns a 404; users must navigate to `/networking` instead. The internal mapping is applied at server startup via `useAltPaths()`, so no runtime overhead is incurred.
+
+`robots.txt` and `sitemap.xml` are also removed from the route table when SEO mode is off, preventing search engine indexing of the aliased paths.
+
+### Static file name aliases
+
+Individual file names within the proxy asset directories are also renamed:
+
+```js
+files: {
+  'scramjet.all.js': 'working.all.js',
+  'scramjet.sw.js': 'working.sw.js',
+  'scramjet.sw-blacklist.js': 'working.sw-blacklist.js',
+  'scramjet.sync.js': 'working.sync.js',
+  'scramjet.wasm.wasm': 'working.wasm.wasm',
+  'uv.handler.js': 'networking.handler.js',
+  'uv.client.js': 'networking.client.js',
+  'uv.bundle.js': 'networking.bundle.js',
+  'uv.config.js': 'networking.config.js',
+  'uv.sw.js': 'networking.sw.js',
+  // ...
+},
+```
+
+### URL prefix aliases
+
+Directory prefixes used for static asset serving are also replaced:
+
+```js
+prefixes: {
+  roms: 'ms',
+  uv: 'network',
+  scram: 'worker',
+  chii: 'ani',
+  epoxy: 'epoch',
+  libcurl: 'unix',
+  bareasmodule: 'utc',
+  baremux: 'gmt',
+  wisp: 'cron',
+},
+```
+
+For example, with `usingSEO: false`, the Wisp WebSocket endpoint moves from `/wisp/` to `/cron/`, and the Ultraviolet assets are served under `/network/` instead of `/uv/`. The `register-sw.js` template substitutions (`{{route}}{{/wisp/}}`, etc.) resolve to the correct aliased paths at build time.
+
+---
+
+## Identifier randomization (`randomizeIdentifiers`)
+
+When you set `randomizeIdentifiers: true` in `config.json`, Ultraviolet's proxy global variable names are randomized on each build. These globals (such as the UV config object key) are injected into pages by the service worker; randomizing their names reduces the effectiveness of extension-based content filters that detect UV by looking for known identifiers.
+
+```json
+{
+  "randomizeIdentifiers": true
+}
+```
+
+<Note>
+  This option is described in the README as "experimental." Use it on production deployments where extension-based detection is a concern.
+</Note>
+
+---
+
+## Tab title and icon customization
+
+Users can change the tab title and favicon from the Settings menu. This helps disguise browsing activity in:
+
+- Browser history visible to monitoring software or screen captures
+- Browser task managers that display open tab titles
+
+The customized title and icon are applied to the current tab in real time via the settings script (`csel.js`) and persist across sessions using localStorage.
+
+<Tip>
+  Encourage users of your instance to set a neutral tab title (such as a common educational site) before browsing, especially in monitored environments.
+</Tip>
+
+---
+
+## Cache busting
+
+Holy Unblocker uses versioned file names for CSS and JS assets to prevent stale cached files from being served after updates:
+
+```js
+// src/routes.mjs
+cacheBustList = {
+  'styles.css': 'styles-1755147161.css',
+  'common.js': 'common-1735118314.js',
+},
+```
+
+The server rewrites references to the canonical names to their versioned equivalents in HTML before serving. When you update the project and rebuild, the version stamps change and browsers automatically fetch the new files rather than serving a cached copy.

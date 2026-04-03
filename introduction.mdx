@@ -1,0 +1,76 @@
+---
+title: "Introduction"
+description: "Holy Unblocker LTS is a web proxy service that helps you access websites blocked by your network, government, or policy — all within your browser, with no downloads or setup required."
+---
+
+## What is Holy Unblocker LTS?
+
+Holy Unblocker LTS (Long Term Support) is an open-source, self-hostable web proxy service that bypasses content filters and censorship entirely within your browser. It supports a wide range of blocked sites including YouTube, Discord, Reddit, Instagram, Spotify, and essentially any website — no VPN, no browser extension, no software installation needed.
+
+Over 30 million users have relied on Holy Unblocker since 2020. It runs on three built-in proxy engines — **Scramjet**, **Ultraviolet**, and **Rammerhead** — each suited for different use cases and levels of filter evasion.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get Holy Unblocker running locally in minutes
+  </Card>
+  <Card title="Deployment" icon="cloud" href="/deployment">
+    Deploy to Koyeb, Docker, Render, and more
+  </Card>
+  <Card title="Proxy Engines" icon="shield" href="/features/proxy-engines">
+    Learn about Scramjet, Ultraviolet, and Rammerhead
+  </Card>
+  <Card title="Self-Hosting Guide" icon="server" href="/self-hosting/vps-setup">
+    Host on your own VPS for maximum privacy
+  </Card>
+</CardGroup>
+
+## Key features
+
+- **Three proxy engines** — Scramjet, Ultraviolet (UV), and Rammerhead, each with different strengths for bypassing various filter types
+- **Tor and Onion routing** — Browse `.onion` sites in any browser, including Chromium, via built-in SOCKS5 proxy support
+- **Adblocking** — Built-in adblocking across all proxied websites via a modified service worker
+- **DOM masquerading** — Obfuscates real content fetches to evade deep-packet inspection and extension-based filters
+- **Source randomization** — Swaps keywords in source files to prevent pattern-based blocking
+- **Stealth browsing** — Customize your tab title and icon to avoid detection in browser history
+- **Games library** — Integrated HTML5 games, Flash emulation via Ruffle, and RetroArch emulators
+- **Production-ready** — PM2 process management, Docker support, and NGINX compatibility out of the box
+
+## Supported sites
+
+Holy Unblocker works with a large number of sites, including:
+
+| Site | Notes |
+|------|-------|
+| YouTube | Full video playback |
+| Discord | Messaging and voice |
+| Reddit | Browsing and posting |
+| Instagram | Feed and stories |
+| Spotify | Music streaming |
+| GeForce NOW | Cloud gaming |
+| And essentially all sites | Works with most modern websites |
+
+## Proxy engines overview
+
+| Engine | Best for | Transport |
+|--------|----------|-----------|
+| Scramjet | Speed and CAPTCHA support | Wisp (Bare-Mux) |
+| Ultraviolet | Broad compatibility + adblocking | Wisp (Bare-Mux) |
+| Rammerhead | Maximum filter evasion | Custom session-based |
+
+## Branches
+
+<Note>
+  For self-hosting in production, always use a **production branch** (e.g., `v6.9.5_production`). The `master` branch contains work-in-progress changes that may be unstable.
+</Note>
+
+| Branch | Purpose |
+|--------|---------|
+| `master` | Latest development — FOSS and SEO-focused |
+| `beta` | Pending changes that may break things |
+| `v6.x_production` | Stable, production-hardened — recommended for self-hosting |
+
+## Community
+
+Join the Titanium Network Discord for official site links, support, and community discussion:
+
+**Discord:** [discord.gg/unblock](https://discord.gg/unblock)
